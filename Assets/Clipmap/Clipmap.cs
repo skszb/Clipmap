@@ -57,7 +57,7 @@ public class Clipmap : MonoBehaviour
     // The actual texture that will be sync with GPU as the mipmap
     // Updates every frame?
     // TODO: Adjust to TextureArray with up to 3 mip levels
-    private Texture2D[] m_clipmapTexture;
+    private Texture2D[] m_clipmapLevel;
 
     private Vector2Int[] m_clipmapCenter;
     private Vector2Int[] m_clipmapOffset;
@@ -74,6 +74,7 @@ public class Clipmap : MonoBehaviour
         ClipSize = 512;
         MipTextureFormat = TextureFormat.RGBA32;
         //******************************************************************************
+
         Intialize();
 
     }
@@ -85,16 +86,15 @@ public class Clipmap : MonoBehaviour
 
     private void Intialize()
     {
-        m_clipmapTexture = new Texture2D[MipLevelCount];
+        m_clipmapLevel = new Texture2D[MipLevelCount];
         m_clipmapCache = new Texture2D[MipLevelCount];
         m_clipmapCenter = new Vector2Int[MipLevelCount];
         m_clipmapOffset = new Vector2Int[MipLevelCount];
         m_halfSize = ClipSize / 2;
-
         InitMips();
 
         // bind debug textures
-        mipDisplay[0].material.SetTexture("_Mip", m_clipmapTexture[0]);
+        mipDisplay[0].material.SetTexture("_Mip", m_clipmapLevel[0]);
     }
 
     // Create space for each level in the clipmap by resolutions
@@ -113,17 +113,17 @@ public class Clipmap : MonoBehaviour
                 Graphics.CopyTexture(BaseTexture, 0, 0, 0, 0, clipmapLevelSize, clipmapLevelSize, m_clipmapCache[0], 0, 0, 0, 0);
       
                 // load mip from cache
-                m_clipmapTexture[m] = new Texture2D(ClipSize, ClipSize, MipTextureFormat, false, false);
+                m_clipmapLevel[m] = new Texture2D(ClipSize, ClipSize, MipTextureFormat, false, false);
 
                 m_clipmapOffset[m] = new Vector2Int();
                 Vector2Int centerInTexturespace = Vector2Int.FloorToInt(center) + Vector2Int.FloorToInt(BaseTexture.Size())/ 2;
                 m_clipmapCenter[m] = centerInTexturespace;
-                Graphics.CopyTexture(m_clipmapCache[m], 0, 0, centerInTexturespace.x - m_halfSize, centerInTexturespace.y - m_halfSize, ClipSize, ClipSize, m_clipmapTexture[m], 0, 0, 0, 0);
+                Graphics.CopyTexture(m_clipmapCache[m], 0, 0, centerInTexturespace.x - m_halfSize, centerInTexturespace.y - m_halfSize, ClipSize, ClipSize, m_clipmapLevel[m], 0, 0, 0, 0);
             }
             else
             {
                 // load entire mip from disk
-                m_clipmapTexture[m] = new Texture2D(clipmapLevelSize, clipmapLevelSize, MipTextureFormat, false, false);
+                m_clipmapLevel[m] = new Texture2D(clipmapLevelSize, clipmapLevelSize, MipTextureFormat, false, false);
             }
         }
     }
@@ -134,10 +134,10 @@ public class Clipmap : MonoBehaviour
         Vector2 center = GetCenterInHomogenousSpace();
         for (int m = 0; m < 1; m++, center /= 2)
         {
-            if (m_clipmapTexture[m].width < ClipSize) { break; }
+            if (m_clipmapLevel[m].width < ClipSize) { break; }
 
-            Vector2Int centerInTexturespace = Vector2Int.FloorToInt(center) + Vector2Int.FloorToInt(BaseTexture.Size()) / 2;
-            Vector2Int diff = centerInTexturespace - m_clipmapCenter[m];
+            Vector2Int centerInTextureSpace = Vector2Int.FloorToInt(center) + Vector2Int.FloorToInt(BaseTexture.Size()) / 2;
+            Vector2Int diff = centerInTextureSpace - m_clipmapCenter[m];
             Vector2Int newOffset = m_clipmapOffset[m] + diff;
 
             int updateWidth = Mathf.Abs(diff.x);
@@ -145,16 +145,14 @@ public class Clipmap : MonoBehaviour
             // update the whole texture when displacement is too large
             if (updateWidth > ClipSize || updateHeight > ClipSize)
             {
-                Graphics.CopyTexture(m_clipmapCache[m], 0, 0, centerInTexturespace.x - m_halfSize, centerInTexturespace.y - m_halfSize, ClipSize, ClipSize, m_clipmapTexture[m], 0, 0, 0, 0);
+                Graphics.CopyTexture(m_clipmapCache[m], 0, 0, centerInTextureSpace.x - m_halfSize, centerInTextureSpace.y - m_halfSize, ClipSize, ClipSize, m_clipmapLevel[m], 0, 0, 0, 0);
                 m_clipmapOffset[m].Set(0, 0);
-                m_clipmapCenter[m] = centerInTexturespace;
+                m_clipmapCenter[m] = centerInTextureSpace;
+                continue;
             }
 
-            if (Mathf.Abs(diff.x) > MipGridSize || Mathf.Abs(diff.y) > MipGridSize)
-            {
-                // Graphics.CopyTexture(m_clipmapCache[m], 0, 0, centerInTexturespace.x - m_halfSize, centerInTexturespace.y - m_halfSize, ClipSize, ClipSize, m_clipmapTexture[m], 0, 0, 0, 0);
-                
-            }
+            // update by parts
+
 
         }
 
@@ -171,11 +169,12 @@ public class Clipmap : MonoBehaviour
         return hCoord;
     }
 
-    void recalculateClipCenters()
+    private void loadFromCacheToLevel(int clipmapLevel, int srcX, int srcY, int width, int height, int clipLevelX, int clipLeveY)
     {
-        // TODO: FILL - force updates the clip centers of each mip level based on the clip center in mip0
-        // should update from mip level 0 to higher levels
-        // should takes account of invalid borders
+        Texture2D cache = m_clipmapCache[clipmapLevel];
+        Texture2D stackLevel = m_clipmapLevel[clipmapLevel];
+
+        // convert srcX 
 
     }
 
