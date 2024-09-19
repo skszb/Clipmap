@@ -169,14 +169,43 @@ public class Clipmap : MonoBehaviour
         return hCoord;
     }
 
+    
+    /*
+    _____________________________
+    |      |      |      |      |       When the clipcenter changes and makes clip offset moves from O  to N, there are 5 zones need to be updated to ensure correct toroidal addressing
+    |      |  5   |      |      |     
+    |______|______|______|______|     
+    |      |      |      |      |     
+    |      |  5   |      |      |       Can be spearate into two two steps and simplify: move up and right
+    |______|______N______|______|     
+    |      |      |      |      |
+    |  2   |  1   |  4   |  4   |
+    |______O______|______|______|
+    |      |      |      |      |
+    |      |  3   |      |      |
+    |______|______|______|______|
+
+    */
+    private void copyZones()
+    {
+        // zone 1
+        // zone 2
+        // zone 3
+        // zone 4
+        // zone 5
+    }
+
     private void loadFromCacheToLevel(int clipmapLevel, int srcX, int srcY, int width, int height, int clipLevelX, int clipLeveY)
     {
         Texture2D cache = m_clipmapCache[clipmapLevel];
         Texture2D stackLevel = m_clipmapLevel[clipmapLevel];
-
+        Mathf.Sign(-123);
         // convert srcX 
 
     }
+
+    private void clipToTexture() {}
+    private void textureToClip() {}
 
     private void OnDrawGizmos()
     {
