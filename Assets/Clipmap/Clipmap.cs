@@ -1,17 +1,20 @@
+using System;
+using System.Drawing;
 using Unity.VisualScripting;
 using UnityEngine;
 
+[Serializable]
 public struct ClipmapParam
 {
-    public int clipmapLevels;
+    public int clipmapLevelCount;
     public int clipSize;
     public int worldGridSize;
-    public int mipUpdateGridSize;
+    public int clipmapUpdateGridSize;
     public int invalidBorder;
     public TextureFormat mipTextureFormat;
 
     // 
-    public Vector2Int baseResolution;
+    public Vector2Int baseTextureResolution;
     public Texture2D baseTexture;
 
 }
@@ -19,35 +22,32 @@ public struct ClipmapParam
 public struct ClipmapLevel
 {
     public Vector2Int center;
+    public float worldToClipmapScale;  
 }
 
 public class Clipmap : MonoBehaviour
 {
-    // the internal texture format used for each mip level when streaming data from disk
-    public TextureFormat MipTextureFormat;
-
-    // The debugging renderers to show each mip level
-    [SerializeField]
-    private Renderer[] mipDisplay;
-
-    [SerializeField]
-    private int m_mipLevelCount;
-
     #region Internal Variables
     // The resolution of the mip0 texture
     private Vector2Int m_baseTextureResolution;
 
+    private TextureFormat m_mipTextureFormat;
+
     // The length in one dimension of a grid in world space that binds to one texel.
-    // Used to convert player coordinate to homogeneous coordinate: hCoord = wCoord / worldGridSize
+    // Used to convert player coordinate to homogeneous coordinate: homogeneousCoordinate = worldCoordinate / worldGridSize
     private int m_worldGridSize;
 
     // The length in one dimension of a grid in texture space.
     // Depends on clip center deviation, the clipmap will only update a multiple of MipGridSize pixels in a direction
-    private int m_mipUpdateGridSize;
+    private int m_clipmapUpdateGridSize;
 
     // The number of texels in one dimension in a stack level
     private int m_clipSize;
     private int m_halfSize;
+
+    private int m_clipStackSize;
+
+    private int m_clipmapLevelCount;
 
     // The number of texels in one dimension from both ends, this will be used to determine whether to wait for mipTexture update
     private int m_invalidBorder;
@@ -62,101 +62,120 @@ public class Clipmap : MonoBehaviour
     // The actual texture that will be sync with GPU as the mipmap
     private Texture2D[] m_clipmapLevel;
 
-    private Vector2Int[] m_clipmapCenter;   // range - +
+    private Vector2Int[] m_clipmapCenter;
     #endregion
 
-    private void Start()
+    public void Intialize(ClipmapParam param, Vector3 worldPosition)
     {
-        //************** DEBUG Param ***************************************************
-        m_baseTextureResolution = new Vector2Int(2048, 2048);
-        m_worldGridSize = 10;
-        m_mipUpdateGridSize = 4;
-        m_clipSize = 512;
-        MipTextureFormat = TextureFormat.RGBA32;
-        //******************************************************************************
+        m_baseTexture = param.baseTexture; // to be changed to data streaming 
+        m_baseTextureResolution = param.baseTextureResolution; // to be changed to data streaming 
 
-        Intialize();
-
-    }
-
-    private void Intialize()
-    {
-        m_clipmapLevel = new Texture2D[m_mipLevelCount];
-        m_clipmapCache = new Texture2D[m_mipLevelCount];
-        m_clipmapCenter = new Vector2Int[m_mipLevelCount];
+        m_clipSize = param.clipSize;
         m_halfSize = m_clipSize / 2;
-        InitMips();
+        m_worldGridSize = param.worldGridSize;
+        m_clipmapUpdateGridSize = param.clipmapUpdateGridSize;
+        m_invalidBorder = param.invalidBorder;
+        m_mipTextureFormat = param.mipTextureFormat;
+        m_clipmapLevelCount = param.clipmapLevelCount;
 
-        // bind debug textures
-        mipDisplay[0].material.SetTexture("_Mip", m_clipmapLevel[0]);
+        m_clipStackSize = 0;
+        m_clipmapLevel = new Texture2D[param.clipmapLevelCount];
+        m_clipmapCache = new Texture2D[param.clipmapLevelCount];
+        m_clipmapCenter = new Vector2Int[param.clipmapLevelCount];
+
+        InitializeMips(worldPosition);
     }
 
     // Create space for each level in the clipmap by resolutions
-    private void InitMips()
+    private void InitializeMips(Vector3 worldPosition)
     {
-        int clipmapLevelSize = m_baseTexture.width;
-        Vector2 center = GetCenterInHomogenousSpace();
+        Vector2 centerInWorldSpace = new Vector2(worldPosition.x, worldPosition.z);
+        float height = worldPosition.y;
+        Vector2 centerInHomogeneousSpace = centerInWorldSpace / m_worldGridSize;
 
-        for (int m = 0; m < 1; m++, clipmapLevelSize /= 2, center /= 2) 
+        int mipSize = m_baseTextureResolution.x;
+        Vector2 centerInClipmapSpace = centerInHomogeneousSpace;
+        for (int m = 0; m < m_clipmapLevelCount; m++, mipSize /= 2, centerInClipmapSpace /= 2) 
         {
-            bool inClipStack = clipmapLevelSize > m_clipSize;
+            bool inClipStack = mipSize > m_clipSize;
             if (inClipStack)
             {
-                // load cache from disk
-                m_clipmapCache[0] = new Texture2D(m_baseTexture.width, m_baseTexture.height, MipTextureFormat, false, false);
-                Graphics.CopyTexture(m_baseTexture, 0, 0, 0, 0, clipmapLevelSize, clipmapLevelSize, m_clipmapCache[0], 0, 0, 0, 0);
-      
-                // load mip from cache
-                m_clipmapLevel[m] = new Texture2D(m_clipSize, m_clipSize, MipTextureFormat, false, false);
+                m_clipStackSize++;
 
-                Vector2Int centerInTexturespace = Vector2Int.FloorToInt(center) + Vector2Int.FloorToInt(m_baseTexture.Size())/ 2;
-                m_clipmapCenter[m] = centerInTexturespace;
-                Graphics.CopyTexture(m_clipmapCache[m], 0, 0, centerInTexturespace.x - m_halfSize, centerInTexturespace.y - m_halfSize, m_clipSize, m_clipSize, m_clipmapLevel[m], 0, 0, 0, 0);
+                Vector2Int snappedCenterInClipmapSpace = GetSnappedCenter(centerInClipmapSpace);
+
+                m_clipmapCache[m] = new Texture2D(m_baseTexture.width, m_baseTexture.height, m_mipTextureFormat, false, false);
+                m_clipmapLevel[m] = new Texture2D(m_clipSize, m_clipSize, m_mipTextureFormat, false, false);
+
+                // load cache from disk
+                Graphics.CopyTexture(m_baseTexture, 0, 0, 0, 0, m_baseTexture.width, m_baseTexture.height, m_clipmapCache[0], 0, 0, 0, 0);
+
+                // load mip from cache
+
+                m_clipmapCenter[m] = snappedCenterInClipmapSpace;
             }
             else
             {
-                // load entire mip from disk
-                m_clipmapLevel[m] = new Texture2D(clipmapLevelSize, clipmapLevelSize, MipTextureFormat, false, false);
+                // load entire mip level from disk
+                m_clipmapLevel[m] = new Texture2D(mipSize, mipSize, m_mipTextureFormat, false, false);
             }
         }
+        Array.Resize(ref m_clipmapCache, m_clipStackSize);
     }
 
-    private void UpdateClipmap(Vector2 c)
+    public void UpdateClipmap(Vector3 worldPosition)
     {
-        // load cached area and load mip from cached area
-        Vector2 center = GetCenterInHomogenousSpace();
-        for (int m = 0; m < 1; m++, center /= 2)
+        Vector2 centerInWorldSpace = new Vector2(worldPosition.x, worldPosition.z);
+        float height = worldPosition.y;
+        int mipSize = m_baseTextureResolution.x;
+        Vector2 centerInHomogeneousSpace = centerInWorldSpace / m_worldGridSize;
+        Vector2 centerInClipmapSpace = centerInHomogeneousSpace;
+        for (int clipmapLevel = 0; clipmapLevel < m_clipStackSize; clipmapLevel++, mipSize /=2, centerInClipmapSpace /= 2)
         {
-            if (m_clipmapLevel[m].width < m_clipSize) { break; }
+            Vector2Int snappedCenterInClipmapSpace = GetSnappedCenter(centerInClipmapSpace);
+            Vector2Int diff = snappedCenterInClipmapSpace - m_clipmapCenter[clipmapLevel];
 
-            Vector2Int centerInTextureSpace = Vector2Int.FloorToInt(center) + Vector2Int.FloorToInt(m_baseTexture.Size()) / 2;
-            Vector2Int diff = centerInTextureSpace - m_clipmapCenter[m];
+            AABB2Int mipBound = new AABB2Int(-mipSize, -mipSize, mipSize, mipSize);
+            // load mip from cache
+            // TEMP
+            //Vector2Int coord = new Vector2Int();
+            //coord.x = (snappedCenterInClipmapSpace.x - m_halfSize + (int)m_clipmapCache[m].width / 2);
+            //coord.y = (snappedCenterInClipmapSpace.y - m_halfSize + (int)m_clipmapCache[m].width / 2);
+            //Graphics.CopyTexture(m_clipmapCache[m], 0, 0, coord.x, coord.y, m_clipSize, m_clipSize, m_clipmapLevel[m], 0, 0, 0, 0);
+            //Debug.Log(coord);
+            //m_clipmapCenter[m] = snappedCenterInClipmapSpace;
 
-            int updateWidth = Mathf.Abs(diff.x);
-            int updateHeight = Mathf.Abs(diff.y);
-            // update the whole texture when displacement is too large
-            if (updateWidth > m_clipSize || updateHeight > m_clipSize)
-            {
-                Graphics.CopyTexture(m_clipmapCache[m], 0, 0, centerInTextureSpace.x - m_halfSize, centerInTextureSpace.y - m_halfSize, m_clipSize, m_clipSize, m_clipmapLevel[m], 0, 0, 0, 0);
-                m_clipmapCenter[m] = centerInTextureSpace;
-                continue;
-            }
+            // load mip from cache
 
-            // update by parts
+            /* 
+            find four quadrants and copy to mip level 
+            _____________________________
+            |      |      |      |      |  
+            |      |      |      |      |  
+            |______|______|______|______|  
+            |      |     _|___   |      |  
+            |      |    | |   |  |      |  
+            |______|____|_|___|__|______|  
+            |      |    |_|___|  |      |
+            |      |      |      |      |
+            |______|______|______|______|
+            |      |      |      |      |
+            |      |      |      |      |
+            |______|______|______|______|
 
+            */
+            
 
+            Vector2Int bottomLeftTile;
+
+            m_clipmapCenter[clipmapLevel] = snappedCenterInClipmapSpace;
         }
-
-        // actual center = virtual center + offset
     }
 
     // get the player's position in homogeneous coordinate
     private Vector2 GetCenterInHomogenousSpace(Vector2 position)
     {
-        Vector2 wCoord = new Vector2(playerPawn.position.x, playerPawn.position.z) - 
-                            new Vector2(worldOrigin.position.x, worldOrigin.position.z);
-
-        Vector2 hCoord = wCoord / m_worldGridSize;
+        Vector2 hCoord = position / m_worldGridSize;
         return hCoord;
     }
 
@@ -195,8 +214,21 @@ public class Clipmap : MonoBehaviour
 
     }
 
-    private void clipToTexture() {}
-    private void textureToClip() {}
+    // Snap the center to multiples of m_mipUpdateGridSize
+    private Vector2Int GetSnappedCenter(Vector2 worldCenter)
+    {
+        return Vector2Int.FloorToInt(worldCenter / m_clipmapUpdateGridSize) * m_clipmapUpdateGridSize;
+    }
+
+    public Texture2D GetClipmapLevel(int level)
+    {
+        if (level >= m_clipStackSize) 
+        {
+            return null;
+        }
+
+        return m_clipmapLevel[level];
+    }
 
     private void OnDrawGizmos()
     {

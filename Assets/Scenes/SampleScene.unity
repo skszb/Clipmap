@@ -664,6 +664,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 520666770}
+  - component: {fileID: 520666772}
   - component: {fileID: 520666771}
   m_Layer: 0
   m_Name: Clipmap
@@ -699,14 +700,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56b39ba935cba49499d41aa380878bad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerPawn: {fileID: 94049692}
-  worldOrigin: {fileID: 111118156}
-  ClipSize: 0
-  InvalidBorder: 0
-  MipLevelCount: 0
-  BaseTexture: {fileID: 2800000, guid: ea6d20a25c62b4e41bdce358485634da, type: 3}
-  MipTextureFormat: 4
-  mipDisplay:
+--- !u!114 &520666772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 520666769}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f18db48277c2b124b9fecd265f7fd381, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  PlayerPawn: {fileID: 94049692}
+  WorldOrigin: {fileID: 111118156}
+  m_clipMap: {fileID: 520666771}
+  Param:
+    clipmapLevelCount: 1
+    clipSize: 512
+    worldGridSize: 10
+    clipmapUpdateGridSize: 0
+    invalidBorder: 0
+    mipTextureFormat: 0
+    baseTextureResolution: {x: 0, y: 0}
+    baseTexture: {fileID: 0}
+  ClipmapLevelDisplay:
   - {fileID: 2130101308}
 --- !u!1 &589822010
 GameObject:

@@ -27,6 +27,12 @@ newClipCenter may be outside
 
 unity ok with copying 0 area
 
+separate with two passes
+{
+    within cliplevel
+    exceeds cliplevel
+}
+
 ### Zone 1
 
     Dst (in clipLevel space)
