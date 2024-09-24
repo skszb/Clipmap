@@ -253,7 +253,7 @@ Transform:
   m_GameObject: {fileID: 94049691}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -7680, y: 0, z: -7680}
+  m_LocalPosition: {x: 711, y: 0, z: 643}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -719,11 +719,11 @@ MonoBehaviour:
     clipmapLevelCount: 1
     clipSize: 512
     worldGridSize: 10
-    clipmapUpdateGridSize: 0
-    invalidBorder: 0
-    mipTextureFormat: 0
-    baseTextureResolution: {x: 0, y: 0}
-    baseTexture: {fileID: 0}
+    clipmapUpdateGridSize: 64
+    invalidBorder: 32
+    mipTextureFormat: 4
+    baseTextureResolution: {x: 2048, y: 2048}
+    baseTexture: {fileID: 2800000, guid: ea6d20a25c62b4e41bdce358485634da, type: 3}
   ClipmapLevelDisplay:
   - {fileID: 2130101308}
 --- !u!1 &589822010

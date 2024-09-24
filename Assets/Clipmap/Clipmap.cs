@@ -63,6 +63,9 @@ public class Clipmap : MonoBehaviour
     private Texture2D[] m_clipmapLevel;
 
     private Vector2Int[] m_clipmapCenter;
+
+    // the bounding box of the safe region that the clipmap center can move, so that the clipmap level does not include areas beyond the mip texture
+    private AABB2Int[] m_clipmapCenterSafeRegion;
     #endregion
 
     public void Intialize(ClipmapParam param, Vector3 worldPosition)
@@ -82,6 +85,7 @@ public class Clipmap : MonoBehaviour
         m_clipmapLevel = new Texture2D[param.clipmapLevelCount];
         m_clipmapCache = new Texture2D[param.clipmapLevelCount];
         m_clipmapCenter = new Vector2Int[param.clipmapLevelCount];
+        m_clipmapCenterSafeRegion = new AABB2Int[param.clipmapLevelCount];
 
         InitializeMips(worldPosition);
     }
@@ -89,20 +93,13 @@ public class Clipmap : MonoBehaviour
     // Create space for each level in the clipmap by resolutions
     private void InitializeMips(Vector3 worldPosition)
     {
-        Vector2 centerInWorldSpace = new Vector2(worldPosition.x, worldPosition.z);
-        float height = worldPosition.y;
-        Vector2 centerInHomogeneousSpace = centerInWorldSpace / m_worldGridSize;
-
         int mipSize = m_baseTextureResolution.x;
-        Vector2 centerInClipmapSpace = centerInHomogeneousSpace;
-        for (int m = 0; m < m_clipmapLevelCount; m++, mipSize /= 2, centerInClipmapSpace /= 2) 
+        for (int m = 0; m < m_clipmapLevelCount; m++, mipSize /= 2) 
         {
             bool inClipStack = mipSize > m_clipSize;
             if (inClipStack)
             {
                 m_clipStackSize++;
-
-                Vector2Int snappedCenterInClipmapSpace = GetSnappedCenter(centerInClipmapSpace);
 
                 m_clipmapCache[m] = new Texture2D(m_baseTexture.width, m_baseTexture.height, m_mipTextureFormat, false, false);
                 m_clipmapLevel[m] = new Texture2D(m_clipSize, m_clipSize, m_mipTextureFormat, false, false);
@@ -111,16 +108,20 @@ public class Clipmap : MonoBehaviour
                 Graphics.CopyTexture(m_baseTexture, 0, 0, 0, 0, m_baseTexture.width, m_baseTexture.height, m_clipmapCache[0], 0, 0, 0, 0);
 
                 // load mip from cache
-
-                m_clipmapCenter[m] = snappedCenterInClipmapSpace;
+                // Initialize all clipmap levels at the very bottom left
+                int mipHalfSize = mipSize / 2;
+                m_clipmapCenterSafeRegion[m] = new AABB2Int(-mipHalfSize + m_halfSize, -mipHalfSize + m_halfSize, mipHalfSize - m_halfSize, mipHalfSize - m_halfSize);
+                m_clipmapCenter[m] = m_clipmapCenterSafeRegion[m].min;
             }
             else
             {
                 // load entire mip level from disk
                 m_clipmapLevel[m] = new Texture2D(mipSize, mipSize, m_mipTextureFormat, false, false);
+  
             }
         }
         Array.Resize(ref m_clipmapCache, m_clipStackSize);
+        Array.Resize(ref m_clipmapCenterSafeRegion, m_clipStackSize);
     }
 
     public void UpdateClipmap(Vector3 worldPosition)
@@ -130,46 +131,106 @@ public class Clipmap : MonoBehaviour
         int mipSize = m_baseTextureResolution.x;
         Vector2 centerInHomogeneousSpace = centerInWorldSpace / m_worldGridSize;
         Vector2 centerInClipmapSpace = centerInHomogeneousSpace;
-        for (int clipmapLevel = 0; clipmapLevel < m_clipStackSize; clipmapLevel++, mipSize /=2, centerInClipmapSpace /= 2)
+        for (int levelIndex = 0; levelIndex < m_clipStackSize; levelIndex++, mipSize /=2, centerInClipmapSpace /= 2)
         {
-            Vector2Int snappedCenterInClipmapSpace = GetSnappedCenter(centerInClipmapSpace);
-            Vector2Int diff = snappedCenterInClipmapSpace - m_clipmapCenter[clipmapLevel];
+            AABB2Int clipmapCenterSafeRegion = m_clipmapCenterSafeRegion[levelIndex];
+            Vector2Int updatedClipmapCenter = GetSnappedCenter(centerInClipmapSpace);
+            updatedClipmapCenter.x = Math.Clamp(updatedClipmapCenter.x, clipmapCenterSafeRegion.min.x, clipmapCenterSafeRegion.max.x);
+            updatedClipmapCenter.y = Math.Clamp(updatedClipmapCenter.y, clipmapCenterSafeRegion.min.y, clipmapCenterSafeRegion.max.y);
 
-            AABB2Int mipBound = new AABB2Int(-mipSize, -mipSize, mipSize, mipSize);
-            // load mip from cache
-            // TEMP
-            //Vector2Int coord = new Vector2Int();
-            //coord.x = (snappedCenterInClipmapSpace.x - m_halfSize + (int)m_clipmapCache[m].width / 2);
-            //coord.y = (snappedCenterInClipmapSpace.y - m_halfSize + (int)m_clipmapCache[m].width / 2);
-            //Graphics.CopyTexture(m_clipmapCache[m], 0, 0, coord.x, coord.y, m_clipSize, m_clipSize, m_clipmapLevel[m], 0, 0, 0, 0);
-            //Debug.Log(coord);
-            //m_clipmapCenter[m] = snappedCenterInClipmapSpace;
+            Vector2Int diff = updatedClipmapCenter - m_clipmapCenter[levelIndex];
+            Vector2Int absDiff = new Vector2Int(Math.Abs(diff.x), Math.Abs(diff.y));
 
-            // load mip from cache
+            // find the updated regions in mipmap space
+            AABB2Int verticalUpdateZone = new AABB2Int();
+            if (absDiff.x > 0)
+            {
+                if (diff.x < 0)
+                {
+                    verticalUpdateZone.min.x = updatedClipmapCenter.x - m_halfSize;
+                    verticalUpdateZone.max.x = verticalUpdateZone.min.x + absDiff.x;
+                }
+                else
+                {
+                    verticalUpdateZone.max.x = updatedClipmapCenter.x + m_halfSize;
+                    verticalUpdateZone.min.x = verticalUpdateZone.max.x - absDiff.x;
+                }
+                verticalUpdateZone.min.y = updatedClipmapCenter.y - m_halfSize;
+                verticalUpdateZone.max.y = verticalUpdateZone.min.y + m_clipSize;
+            }
+
+            AABB2Int horizontalUpdateZone = new AABB2Int();
+            if (absDiff.y > 0 && absDiff.x < m_clipSize)
+            {
+                if (diff.y < 0)
+                {
+                    horizontalUpdateZone.min.y = updatedClipmapCenter.y - m_halfSize;
+                    horizontalUpdateZone.max.y = horizontalUpdateZone.min.y + absDiff.y;
+                }
+                else
+                {
+                    horizontalUpdateZone.max.y = updatedClipmapCenter.y + m_halfSize;
+                    horizontalUpdateZone.min.y = horizontalUpdateZone.max.y - absDiff.y;
+                }
+
+                if (diff.x < 0)
+                {
+                    horizontalUpdateZone.max.x = updatedClipmapCenter.x + m_halfSize;
+                    horizontalUpdateZone.min.x = horizontalUpdateZone.max.x - m_clipSize + absDiff.x;
+                }
+                else
+                {
+                    horizontalUpdateZone.min.x = updatedClipmapCenter.x - m_halfSize;
+                    horizontalUpdateZone.max.x = horizontalUpdateZone.min.x + m_clipSize - absDiff.x;
+                }
+            }
 
             /* 
             find four quadrants and copy to mip level 
-            _____________________________
+
+            +---------------------------+
             |      |      |      |      |  
             |      |      |      |      |  
-            |______|______|______|______|  
-            |      |     _|___   |      |  
-            |      |    | |   |  |      |  
-            |______|____|_|___|__|______|  
-            |      |    |_|___|  |      |
+            +------+------+------+------+  
+            |      |  +---|---+  |      |  
+            |      |  |   |   |  |      |  
+            +------+--+---+---+--+------+  
+            |      |  |   |   |  |      |
+            |      |  +---|---+  |      |
+            +------+------+------+------+  
             |      |      |      |      |
-            |______|______|______|______|
             |      |      |      |      |
-            |      |      |      |      |
-            |______|______|______|______|
+            +------+------+------+------+  
 
             */
-            
+            Vector2Int clipmapBottomLeftCorner = updatedClipmapCenter - new Vector2Int(m_halfSize, m_halfSize);
+            clipmapBottomLeftCorner.x = (int)Mathf.Floor((float)clipmapBottomLeftCorner.x / (float)m_clipSize) * m_clipSize;
+            clipmapBottomLeftCorner.y = (int)Mathf.Floor((float)clipmapBottomLeftCorner.y / (float)m_clipSize) * m_clipSize;
 
-            Vector2Int bottomLeftTile;
+            AABB2Int bottomLeftTile = new AABB2Int(clipmapBottomLeftCorner, 
+                                                   clipmapBottomLeftCorner + new Vector2Int(m_clipSize, m_clipSize));
 
-            m_clipmapCenter[clipmapLevel] = snappedCenterInClipmapSpace;
+            AABB2Int[] tilesToUpdate = {bottomLeftTile,
+                                        bottomLeftTile + new Vector2Int(0, m_clipSize),
+                                        bottomLeftTile + new Vector2Int(m_clipSize, 0),
+                                        bottomLeftTile + m_clipSize};
+
+            foreach(AABB2Int tile in tilesToUpdate)
+            {
+                AABB2Int verticalPart = verticalUpdateZone.Clamp(tile);
+                if (verticalPart.isValid())
+                {
+                    int dstX = verticalPart.min.x - tile.min.x;
+                    int dstY = verticalPart.min.y - tile.min.y;
+                    Graphics.CopyTexture(m_clipmapCache[levelIndex], 0, 0, verticalPart.min.x, verticalPart.min.y,
+                                         verticalPart.max.x - verticalPart.min.x, verticalPart.max.y - verticalPart.min.y,
+                                         m_clipmapLevel[levelIndex], 0, 0, dstX, dstY);
+                }
+
+            }
+            m_clipmapCenter[levelIndex] = updatedClipmapCenter;
         }
+
     }
 
     // get the player's position in homogeneous coordinate
@@ -177,32 +238,6 @@ public class Clipmap : MonoBehaviour
     {
         Vector2 hCoord = position / m_worldGridSize;
         return hCoord;
-    }
-
-    
-    /*
-    _____________________________
-    |      |      |      |      |       When the clipcenter changes and makes clip offset moves from O  to N, there are 5 zones need to be updated to ensure correct toroidal addressing
-    |      |  5   |      |      |     
-    |______|______|______|______|     
-    |      |      |      |      |     
-    |      |  5   |      |      |       Can be spearate into two two steps and simplify: move up and right
-    |______|______N______|______|     
-    |      |      |      |      |
-    |  2   |  1   |  4   |  4   |
-    |______O______|______|______|
-    |      |      |      |      |
-    |      |  3   |      |      |
-    |______|______|______|______|
-
-    */
-    private void copyZones()
-    {
-        // zone 1
-        // zone 2
-        // zone 3
-        // zone 4
-        // zone 5
     }
 
     private void loadFromCacheToLevel(int clipmapLevel, int srcX, int srcY, int width, int height, int clipLevelX, int clipLeveY)
