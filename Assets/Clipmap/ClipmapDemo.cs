@@ -25,11 +25,11 @@ public class ClipmapDemo : MonoBehaviour
     void Start()
     {
         Vector3 worldCoordinate = PlayerPawn.position - WorldOrigin.position;
-        m_clipMap.Intialize(Param, worldCoordinate);
+        m_clipMap.Intialize(Param);
         m_clipMap.UpdateClipmap(PlayerPawn.position - WorldOrigin.position);
         for (int i = 0; i < ClipmapLevelDisplay.Length; i++)
         {
-            Texture2D clipmapTexture = m_clipMap.GetClipmapLevel(i);
+            Texture2D clipmapTexture = m_clipMap.GetClipmapTexture(i);
             ClipmapLevelDisplay[i].material.SetTexture("_Mip", clipmapTexture);
         }
     }
