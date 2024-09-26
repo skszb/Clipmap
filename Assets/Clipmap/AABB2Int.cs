@@ -65,9 +65,19 @@ public class AABB2Int
         return min.x < max.x && min.y < max.y;
     }
 
+    public int Width()
+    {
+        return max.x - min.x;
+    }
+
+    public int Height()
+    {
+        return max.y - min.y;
+    }
+
     public int Area()
     {
-        return (max.x - min.x) * (max.y - min.y);
+        return Width() * Height();
     }
 
     public AABB2Int Clamp(AABB2Int box)

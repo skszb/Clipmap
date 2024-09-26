@@ -881,7 +881,7 @@
     "hlslDeclarationOverride": 0,
     "m_Hidden": false,
     "m_Value": {
-        "m_SerializedTexture": "{\"textureArray\":{\"fileID\":18700000,\"guid\":\"ea6d20a25c62b4e41bdce358485634da\",\"type\":3}}",
+        "m_SerializedTexture": "{\"textureArray\":{\"instanceID\":0}}",
         "m_Guid": ""
     },
     "m_Modifiable": true
@@ -909,7 +909,7 @@
     "m_Type": "UnityEditor.ShaderGraph.Texture2DArrayMaterialSlot",
     "m_ObjectId": "ea652c83a84241a39e6f0eae98f7e37d",
     "m_Id": 0,
-    "m_DisplayName": "ClipLevels",
+    "m_DisplayName": "ClipStack",
     "m_SlotType": 1,
     "m_Hidden": false,
     "m_ShaderOutputName": "Out",

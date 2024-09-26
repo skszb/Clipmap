@@ -27,10 +27,12 @@ public class ClipmapDemo : MonoBehaviour
         Vector3 worldCoordinate = PlayerPawn.position - WorldOrigin.position;
         m_clipMap.Intialize(Param);
         m_clipMap.UpdateClipmap(PlayerPawn.position - WorldOrigin.position);
+
+        Texture2DArray clipmapStackTextureArray = m_clipMap.GetClipmapStackTexture();
         for (int i = 0; i < ClipmapLevelDisplay.Length; i++)
         {
-            Texture2D clipmapTexture = m_clipMap.GetClipmapTexture(i);
-            ClipmapLevelDisplay[i].material.SetTexture("_Mip", clipmapTexture);
+            ClipmapLevelDisplay[i].material.SetTexture("_ClipStack", clipmapStackTextureArray);
+            ClipmapLevelDisplay[i].material.SetFloat("_ClipStackLevelIndex", i);
         }
     }
 
