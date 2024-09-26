@@ -134,6 +134,10 @@ public class Clipmap : MonoBehaviour
 
                 Graphics.CopyTexture(mipTexture, 0, 0, 0, 0, mipTexture.width, mipTexture.height, m_clipmapTexture[mipLevelIndex], 0, 0, 0, 0);
             }
+
+            // set Texture.isReadable to false
+            m_clipmapTexture[mipLevelIndex].Apply(false, true);
+
         }
         Array.Resize(ref m_clipmapCache, m_clipStackSize);
         Array.Resize(ref m_clipmapCenterSafeRegion, m_clipStackSize);
