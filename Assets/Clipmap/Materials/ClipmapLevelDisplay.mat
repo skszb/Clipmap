@@ -20,7 +20,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Shader Graphs_ClipmapLevelDisplay
+  m_Name: ClipmapLevelDisplay
   m_Shader: {fileID: -6465566751694194690, guid: 3dc53612ff073e348847d6efa791e9ba,
     type: 3}
   m_Parent: {fileID: 0}
@@ -41,6 +41,10 @@ Material:
         m_Texture: {fileID: 18700000, guid: 9cf017b6f5e7a8743bad907bf18db3c6, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ClipmapStack:
+        m_Texture: {fileID: 18700000, guid: 9cf017b6f5e7a8743bad907bf18db3c6, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - unity_Lightmaps:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -56,6 +60,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _ClipStackLevelIndex: 0
+    - _ClipmapStackLevelIndex: 0
     - _QueueControl: 0
     - _QueueOffset: 0
     m_Colors: []

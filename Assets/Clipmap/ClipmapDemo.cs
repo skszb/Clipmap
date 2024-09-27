@@ -31,8 +31,8 @@ public class ClipmapDemo : MonoBehaviour
         Texture2DArray clipmapStackTextureArray = m_clipMap.GetClipmapStackTexture();
         for (int i = 0; i < ClipmapLevelDisplay.Length; i++)
         {
-            ClipmapLevelDisplay[i].material.SetTexture("_ClipStack", clipmapStackTextureArray);
-            ClipmapLevelDisplay[i].material.SetFloat("_ClipStackLevelIndex", i);
+            ClipmapLevelDisplay[i].material.SetTexture("_ClipmapStack", clipmapStackTextureArray);
+            ClipmapLevelDisplay[i].material.SetFloat("_ClipmapStackLevelIndex", i);
         }
     }
 

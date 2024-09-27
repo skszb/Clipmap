@@ -30,7 +30,7 @@ class AsyncReadSample : MonoBehaviour
         readHandle = AsyncReadManager.Read(filePath, (ReadCommand*)cmds.GetUnsafePtr(), 1, assetName, typeID, subsystem);
 
         texture = new Texture2D(1, 1);
-        int mainTexId = Shader.PropertyToID("_MainTex");
+        int mainTexId = Shader.PropertyToID("_MipTexture");
         rd.material.SetTexture(mainTexId, texture);
     }
 
