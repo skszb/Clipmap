@@ -1,0 +1,11 @@
+fileFormatVersion: 2
+guid: d97eef9c10564d145b5df197ecbc7f6f
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures:
+  - _ClipmapStack: {instanceID: 0}
+  - _ClipmapPyramid: {instanceID: 0}
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
