@@ -2,57 +2,61 @@ Shader "Unlit/NewUnlitShader"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
+        _ClipmapStack ("Clipmap Stack", 2DArray) = "white" {}
+        _ClipmapPyramid ("Clipmap Pyramid", 2D) = "white" {}
     }
+
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"}
         LOD 100
 
         Pass
         {
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
 
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            struct appdata
+            // The structure definition defines which variables it contains.
+            // This example uses the Attributes structure as an input structure in
+            // the vertex shader.
+            struct Attributes
             {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
+                // The positionOS variable contains the vertex positions in object
+                // space.
+                float4 positionOS   : POSITION;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
-                float4 vertex : SV_POSITION;
+                // The positions in this struct must have the SV_POSITION semantic.
+                float4 positionHCS  : SV_POSITION;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-
-            v2f vert (appdata v)
+            // The vertex shader definition with properties defined in the Varyings
+            // structure. The type of the vert function must match the type (struct)
+            // that it returns.
+            Varyings vert(Attributes IN)
             {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
-                return o;
+                // Declaring the output object (OUT) with the Varyings struct.
+                Varyings OUT;
+                // The TransformObjectToHClip function transforms vertex positions
+                // from object space to homogenous clip space.
+                OUT.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                // Returning the output.
+                return OUT;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            // The fragment shader definition.
+            half4 frag() : SV_Target
             {
-                // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
+                // Defining the color variable and returning it.
+                half4 customColor = half4(0.5, 0, 0, 1);
+                return customColor;
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }
