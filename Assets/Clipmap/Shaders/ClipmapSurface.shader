@@ -79,4 +79,4 @@ Shader "Unlit/ClipmapSurface"
             ENDHLSL
         }
     }
-}z
+}
