@@ -38,6 +38,8 @@ Material:
     - _ClipmapUpdateGridSize: 2
     - _InvalidBorder: 4
     - _MaxClipmapPyramidSize: 4
+    - _MaxCount: 1
+    - _asdasd: 2
     m_Floats:
     - _WorldGridSize: 1
     m_Colors: []

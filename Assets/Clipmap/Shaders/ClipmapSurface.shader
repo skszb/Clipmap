@@ -31,8 +31,6 @@ Shader "Unlit/ClipmapSurface"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            
-
             SAMPLER(sampler_BaseMap);
         
             struct appdata
@@ -51,7 +49,9 @@ Shader "Unlit/ClipmapSurface"
             // declare all Material properties inside
             CBUFFER_START(UnityPerMaterial)
                 Texture2DArray _ClipmapStack;
-                int2 _ClipmapCenter[2] = {{1,1}, {1,2}};
+                const int _MaxCount;
+
+                int2 _ClipmapCenter[2];
 
                 int _ClipSize;
                 int _BaseMapSize;
@@ -72,6 +72,7 @@ Shader "Unlit/ClipmapSurface"
             void getUV(inout int clipmapStackLevel, inout float2 baseUV) 
             {
                 float2 coordInWorldSpace = (baseUV - 0.5) * _BaseMapSize * _WorldGridSize;
+                // TODO
             }
 
             #define blend 0
@@ -86,8 +87,7 @@ Shader "Unlit/ClipmapSurface"
                 float mipFract = frac(mipLevel);
 
                 // if (mipLevelCoarse < _ClipmapStackSize) 
-                // {
-                    
+                // {   
 
                 // }
                 // else
