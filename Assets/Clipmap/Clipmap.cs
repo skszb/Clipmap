@@ -14,7 +14,7 @@ public struct ClipmapParam
 
     public int worldGridSize;
 
-    public Texture2D[] mipTexture;
+    public Texture2D[] baseTexture;
 }
 
 public struct ClipmapLevel
@@ -78,13 +78,14 @@ public class Clipmap : MonoBehaviour
         m_clipmapStackCache = new Texture2D[param.clipmapLevelCount];
         m_clipmapCenter = new Vector2Int[param.clipmapLevelCount];
         m_clipmapCenterSafeRegion = new AABB2Int[param.clipmapLevelCount];
+        m_clipmapPyramidTexture = new Texture2D[param.clipmapLevelCount];
         m_mipSize = new int[param.clipmapLevelCount];
         m_mipHalfSize = new int[param.clipmapLevelCount];
         m_baseMipTexture = new Texture2D[param.clipmapLevelCount];
 
-        for (int i = 0; i < param.mipTexture.Length; i++)
+        for (int i = 0; i < param.clipmapLevelCount; i++)
         {
-            m_baseMipTexture[i] = param.mipTexture[i];
+            m_baseMipTexture[i] = param.baseTexture[i];
             m_mipSize[i] = m_baseMipTexture[i].width;
             m_mipHalfSize[i] = m_baseMipTexture[i].width / 2;
         }
@@ -139,6 +140,8 @@ public class Clipmap : MonoBehaviour
         Vector2 centerInClipmapSpace = centerInHomogeneousSpace;
         for (int clipmapStackLevelIndex = 0; clipmapStackLevelIndex < m_clipmapStackSize; clipmapStackLevelIndex++, centerInClipmapSpace /= 2)
         {
+            // confining the clipmap level within its corresponding mipmap level
+            // then calculate the region that needs to be updated
             AABB2Int clipmapCenterSafeRegion = m_clipmapCenterSafeRegion[clipmapStackLevelIndex];
             Vector2Int updatedClipmapCenter = GetSnappedCenter(centerInClipmapSpace);
             updatedClipmapCenter.x = Math.Clamp(updatedClipmapCenter.x, clipmapCenterSafeRegion.min.x, clipmapCenterSafeRegion.max.x);
@@ -231,7 +234,6 @@ public class Clipmap : MonoBehaviour
             }
             m_clipmapCenter[clipmapStackLevelIndex] = updatedClipmapCenter;
         }
-
     }
     // Snap the center to multiples of m_mipUpdateGridSize
     private Vector2Int GetSnappedCenter(Vector2 worldCenter)

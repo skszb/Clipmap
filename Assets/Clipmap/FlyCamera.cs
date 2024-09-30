@@ -17,13 +17,10 @@ public class FlyCamera : MonoBehaviour
 
 
     public float mainSpeed = 100.0f; //regular speed
-    public float shiftAdd = 250.0f; //multiplied by how long shift is held.  Basically running
-    public float maxShift = 1000.0f; //Maximum speed when holdin gshift
-    private float totalRun = 1.0f;
 
-    public const float YMin = -50.0f;
-    public const float YMax = 50.0f;
-    public float camSens; //How sensitive it with mouse
+    public const float YMin = -45.0f;
+    public const float YMax = 45.0f;
+    public float camSens = 1; //How sensitive it with mouse
     float currY = 0;
     float currX = 0;
 
@@ -35,6 +32,9 @@ public class FlyCamera : MonoBehaviour
 
     void LateUpdate()
     {
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Confined;
+
         float xRot = Input.GetAxis("Mouse X") * camSens;
         float yRot = Input.GetAxis("Mouse Y") * camSens;
         currY += Mathf.Clamp(yRot, YMin, YMax);
@@ -46,39 +46,13 @@ public class FlyCamera : MonoBehaviour
         transform.LookAt(transform.position + direction);
 
         //Keyboard commands
-        float f = 0.0f;
         Vector3 p = GetBaseInput();
-        if (p.sqrMagnitude > 0)
-        { // only move while a direction key is pressed
-            if (Input.GetKey(KeyCode.LeftShift))
-            {
-                totalRun += Time.deltaTime;
-                p = p * totalRun * shiftAdd;
-                p.x = Mathf.Clamp(p.x, -maxShift, maxShift);
-                p.y = Mathf.Clamp(p.y, -maxShift, maxShift);
-                p.z = Mathf.Clamp(p.z, -maxShift, maxShift);
-            }
-            else
-            {
-                totalRun = Mathf.Clamp(totalRun * 0.5f, 1f, 1000f);
-                p = p * mainSpeed;
-            }
 
-            p = p * Time.deltaTime;
-            Vector3 newPosition = transform.position;
-            if (Input.GetKey(KeyCode.Space))
-            { //If player wants to move on X and Z axis only
-                transform.Translate(p);
-                newPosition.x = transform.position.x;
-                newPosition.z = transform.position.z;
-                transform.position = newPosition;
-            }
-            else
-            {
-                transform.Translate(p);
-            }
-        }
+        p = p * Time.deltaTime;
+        Vector3 newPosition = transform.position;
+        transform.Translate(p * mainSpeed);
     }
+    
 
     private Vector3 GetBaseInput()
     { //returns the basic values, if it's 0 than it's not active.
@@ -106,6 +80,10 @@ public class FlyCamera : MonoBehaviour
         if (Input.GetKey(KeyCode.Q))
         {
             p_Velocity += new Vector3(0, -0.5f, 0);
+        }
+        if (Input.GetKey(KeyCode.LeftShift)) 
+        {
+            p_Velocity *= 2;
         }
         return p_Velocity;
     }

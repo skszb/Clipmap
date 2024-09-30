@@ -239,6 +239,7 @@ GameObject:
   - component: {fileID: 117827457}
   - component: {fileID: 117827456}
   - component: {fileID: 117827459}
+  - component: {fileID: 117827460}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -286,7 +287,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 3000
+  far clip plane: 40960
   field of view: 90
   orthographic: 0
   orthographic size: 5
@@ -313,13 +314,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 117827455}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 1808, z: 0}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 3765, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 867227566}
-  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &117827459
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -364,6 +365,20 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!114 &117827460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 117827455}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28696389163d399448da558ba47c55a5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mainSpeed: 2000
+  camSens: 1
 --- !u!1 &126861505
 GameObject:
   m_ObjectHideFlags: 0
@@ -927,14 +942,13 @@ Transform:
   m_GameObject: {fileID: 867227565}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -3926, y: 1.36, z: -2051}
+  m_LocalPosition: {x: -1461, y: 25, z: 938}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 117827458}
   - {fileID: 841338729}
   - {fileID: 1712804763}
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1350314193}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1201279653
 GameObject:
@@ -1001,6 +1015,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 867227566}
   - {fileID: 1656130803}
   m_Father: {fileID: 1201279654}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1028,17 +1043,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f18db48277c2b124b9fecd265f7fd381, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerPawn: {fileID: 867227566}
+  PlayerPawn: {fileID: 117827458}
   WorldOrigin: {fileID: 1623041014}
   m_clipMap: {fileID: 1350314194}
   Param:
     clipmapLevelCount: 4
-    clipSize: 128
+    clipSize: 256
     invalidBorder: 32
     clipmapUpdateGridSize: 16
     mipTextureFormat: 4
     worldGridSize: 10
-    mipTexture:
+    baseTexture:
     - {fileID: 2800000, guid: 0aa7a473c54f9ee4681d0e9e124e007a, type: 3}
     - {fileID: 2800000, guid: 4c33514663fa456429a7865271be5b07, type: 3}
     - {fileID: 2800000, guid: 806eebbd90100794ba4844812b394019, type: 3}
@@ -1048,6 +1063,7 @@ MonoBehaviour:
   - {fileID: 1893095032}
   - {fileID: 2113527863}
   - {fileID: 67744191}
+  ClipmapDisplay: {fileID: 2007341696}
 --- !u!1 &1623041013
 GameObject:
   m_ObjectHideFlags: 0
@@ -1503,7 +1519,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: aaf119ccf72f84d4499e3d4d6086f2d1, type: 2}
+  - {fileID: 2100000, guid: 0bfd5eb0ed3488c44a0e57e4e2a82bb0, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1645,4 +1661,4 @@ SceneRoots:
   - {fileID: 770268750}
   - {fileID: 1201279654}
   - {fileID: 1914875639}
-  - {fileID: 867227566}
+  - {fileID: 117827458}
