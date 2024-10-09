@@ -7,7 +7,7 @@ Shader "Unlit/ClipmapSurface"
 
         _ClipmapStack ("Clipmap Stack", 2DArray) = "white" {}
 
-        _ClipmapStackSize("Clipmap Stack Size", Integer) = 1 
+        _ClipmapStackSize("Clipmap Stack Size", Integer) = 4
         
         _ClipSize("ClipSize", Integer) = 16
         
@@ -50,9 +50,9 @@ Shader "Unlit/ClipmapSurface"
             CBUFFER_START(UnityPerMaterial)
                 Texture2DArray _ClipmapStack;
                 const int _MaxCount;
-
+                const int _ClipmapStackSize;
                 int2 _ClipmapCenter[2];
-
+                
                 int _ClipSize;
                 int _BaseMapSize;
                 int _InvalidBorder;
@@ -71,44 +71,46 @@ Shader "Unlit/ClipmapSurface"
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
             void GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
             {
-                /*
-                // TODO: pass required variables
-                float3 centerInWorld;
-                float centerInMip;
-                // end
-                
-                float2 coordInHomogeneousSpace = uv * _BaseMapSize / _WorldGridSize;
-                int2 coordInMipSpace = (int2)floor(coordInHomogeneousSpace) >> clipmapStackLevel;
-
-                // TODO
-                // + : frac mipSize
-                */
-                float scale = 1 >> clipmapStackLevel;
-                float2 coordInMip = (uv - 0.5) % scale;
-
+                float scale = 1.0;
+                for (int i = clipmapStackLevel; i < _ClipmapStackSize - 1; i++) {
+                    scale *= 0.5;
+                }
+                uv = uv % scale;
             }
 
-            void GetClipmapStackLevels(inout int coarse, inout int fine, inout float fraction) 
+            void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction) 
             {
+                float2 dx = ddx(uv);
+                float2 dy = ddy(uv);
+                float maxSqrPixelDiff = max(dot(dx, dx), dot(dy, dy)) * _BaseMapSize * _BaseMapSize * _WorldGridSize * _WorldGridSize;
+                float mipLevel = 0.5 * log2(maxSqrPixelDiff);
+                int mipLevelFine = floor(mipLevel);
+                int mipLevelCoarse = mipLevelFine + 1;
+                float mipFract = frac(mipLevel);
 
+                coarse = mipLevelCoarse;
+                fine = mipLevelFine;
+                fraction = mipFract;
+
+                // To be changed to forloop with step() to define coarse and fine (ref CalculateMacroClipmapLevel in O3de)
             }
 
             #define BLEND 0
             float4 frag (v2f i) : SV_Target
             {
-                float2 dx = ddx(i.uv);
-                float2 dy = ddy(i.uv);
-                float maxSqrPixelDiff = max(dot(dx, dx), dot(dy, dy));
-                float mipLevel = 0.5 * log2(maxSqrPixelDiff * _BaseMapSize * _BaseMapSize * _WorldGridSize * _WorldGridSize);
-                int mipLevelCoarse = floor(mipLevel);
-                int mipLevelFine = mipLevelCoarse + 1;
-                float mipFract = frac(mipLevel);
-                // for loop with step() to define coarse and fine (ref CalculateMacroClipmapLevel in O3de)
+                int mipLevelCoarse;                                
+                int mipLevelFine;
+                float mipFract;
+                // GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
+
+                float2 newUV = i.uv;
+                GetClipmapUV(0, newUV);
                 
-                float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelCoarse));
+                float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelFine));
+                col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(newUV, 0));
 
                 #if BLEND 
-                    float4 col2 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelFine));
+                    float4 col2 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelCoarse));
                     return lerp(col1, col2, mipFract);
                 #else
                     return col1;

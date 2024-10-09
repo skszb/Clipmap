@@ -24,7 +24,6 @@ public class ClipmapDemo : MonoBehaviour
 
     public bool OverrideBaseTexture = true;
 
-
     // Start is called before the first frame update
     void Start()
     {
