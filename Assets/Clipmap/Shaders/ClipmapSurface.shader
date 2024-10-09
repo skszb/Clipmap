@@ -69,17 +69,31 @@ Shader "Unlit/ClipmapSurface"
             }
 
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
-            void getUV(inout int clipmapStackLevel, inout float2 baseUV) 
+            void GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
             {
+                /*
                 // TODO: pass required variables
                 float3 centerInWorld;
+                float centerInMip;
                 // end
                 
-                float2 coordInHomogeneousSpace = (baseUV - 0.5) * _BaseMapSize / _WorldGridSize;
+                float2 coordInHomogeneousSpace = uv * _BaseMapSize / _WorldGridSize;
+                int2 coordInMipSpace = (int2)floor(coordInHomogeneousSpace) >> clipmapStackLevel;
+
                 // TODO
+                // + : frac mipSize
+                */
+                float scale = 1 >> clipmapStackLevel;
+                float2 coordInMip = (uv - 0.5) % scale;
+
             }
 
-            #define blend 0
+            void GetClipmapStackLevels(inout int coarse, inout int fine, inout float fraction) 
+            {
+
+            }
+
+            #define BLEND 0
             float4 frag (v2f i) : SV_Target
             {
                 float2 dx = ddx(i.uv);
@@ -89,27 +103,11 @@ Shader "Unlit/ClipmapSurface"
                 int mipLevelCoarse = floor(mipLevel);
                 int mipLevelFine = mipLevelCoarse + 1;
                 float mipFract = frac(mipLevel);
-
-                // if (mipLevelCoarse < _ClipmapStackSize) 
-                // {   
-
-                // }
-                // else
-                // {
-
-                // }
-
-                // if (mipLevelFine < _ClipmapStackSize) 
-                // {
-
-                // }
-                // else 
-                // {
-
-                // }
-
+                // for loop with step() to define coarse and fine (ref CalculateMacroClipmapLevel in O3de)
+                
                 float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelCoarse));
-                #if blend 
+
+                #if BLEND 
                     float4 col2 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelFine));
                     return lerp(col1, col2, mipFract);
                 #else

@@ -1049,7 +1049,7 @@ MonoBehaviour:
   Param:
     clipmapLevelCount: 4
     clipSize: 256
-    invalidBorder: 32
+    invalidBorder: 0
     clipmapUpdateGridSize: 16
     mipTextureFormat: 4
     worldGridSize: 10
