@@ -17,12 +17,6 @@ public struct ClipmapParam
     public Texture2D[] baseTexture;
 }
 
-public struct ClipmapLevel
-{
-    public Vector2Int center;
-    public float worldToClipmapScale;  
-}
-
 public class Clipmap : MonoBehaviour
 {
     // The length in one dimension of a grid in world space that binds to one texel.
@@ -61,6 +55,9 @@ public class Clipmap : MonoBehaviour
     private AABB2Int[] m_clipmapCenterSafeRegion;
     private Vector2Int[] m_clipmapCenter;
 
+
+    #region Variables that are passed to the surface shader
+    #endregion
 
     public void Intialize(ClipmapParam param)
     {
