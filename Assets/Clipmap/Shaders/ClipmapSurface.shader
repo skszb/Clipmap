@@ -71,7 +71,11 @@ Shader "Unlit/ClipmapSurface"
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
             void getUV(inout int clipmapStackLevel, inout float2 baseUV) 
             {
-                float2 coordInWorldSpace = (baseUV - 0.5) * _BaseMapSize * _WorldGridSize;
+                // TODO: pass required variables
+                float3 centerInWorld;
+                // end
+                
+                float2 coordInHomogeneousSpace = (baseUV - 0.5) * _BaseMapSize / _WorldGridSize;
                 // TODO
             }
 
@@ -80,8 +84,8 @@ Shader "Unlit/ClipmapSurface"
             {
                 float2 dx = ddx(i.uv);
                 float2 dy = ddy(i.uv);
-                float sqrPixelDiff = max(dot(dx, dx), dot(dy, dy)) * (_BaseMapSize *_WorldGridSize) * (_BaseMapSize *_WorldGridSize);
-                float mipLevel = 0.5 * log2(sqrPixelDiff);
+                float maxSqrPixelDiff = max(dot(dx, dx), dot(dy, dy));
+                float mipLevel = 0.5 * log2(maxSqrPixelDiff * _BaseMapSize * _BaseMapSize * _WorldGridSize * _WorldGridSize);
                 int mipLevelCoarse = floor(mipLevel);
                 int mipLevelFine = mipLevelCoarse + 1;
                 float mipFract = frac(mipLevel);

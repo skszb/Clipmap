@@ -134,13 +134,13 @@ public class Clipmap : MonoBehaviour
         float height = cameraPositionInWorldSpace.y;
 
         Vector2 centerInHomogeneousSpace = centerInWorldSpace / m_worldGridSize;
-        Vector2 centerInClipmapSpace = centerInHomogeneousSpace;
-        for (int clipmapStackLevelIndex = 0; clipmapStackLevelIndex < m_clipmapStackSize; clipmapStackLevelIndex++, centerInClipmapSpace /= 2)
+        Vector2 centerInMipSpace = centerInHomogeneousSpace;
+        for (int clipmapStackLevelIndex = 0; clipmapStackLevelIndex < m_clipmapStackSize; clipmapStackLevelIndex++, centerInMipSpace /= 2)
         {
             // confining the clipmap level within its corresponding mipmap level
             // then calculate the region that needs to be updated
             AABB2Int clipmapCenterSafeRegion = m_clipmapCenterSafeRegion[clipmapStackLevelIndex];
-            Vector2Int updatedClipmapCenter = GetSnappedCenter(centerInClipmapSpace);
+            Vector2Int updatedClipmapCenter = GetSnappedCenter(centerInMipSpace);
             updatedClipmapCenter.x = Math.Clamp(updatedClipmapCenter.x, clipmapCenterSafeRegion.min.x, clipmapCenterSafeRegion.max.x);
             updatedClipmapCenter.y = Math.Clamp(updatedClipmapCenter.y, clipmapCenterSafeRegion.min.y, clipmapCenterSafeRegion.max.y);
 
