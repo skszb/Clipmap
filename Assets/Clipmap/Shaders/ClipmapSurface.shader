@@ -75,7 +75,7 @@ Shader "Unlit/ClipmapSurface"
                 for (int i = clipmapStackLevel; i < _ClipmapStackSize - 1; i++) {
                     scale *= 0.5;
                 }
-                uv = uv % scale;
+                uv = uv % scale / scale;
             }
 
             void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction) 
@@ -101,14 +101,14 @@ Shader "Unlit/ClipmapSurface"
                 int mipLevelCoarse;                                
                 int mipLevelFine;
                 float mipFract;
-                // GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
+                GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
 
                 float2 newUV = i.uv;
-                GetClipmapUV(0, newUV);
+                GetClipmapUV(mipLevelFine, newUV);
                 
-                float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelFine));
-                col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(newUV, 0));
-
+                // float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelFine));
+                float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(newUV, mipLevelFine));
+                
                 #if BLEND 
                     float4 col2 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelCoarse));
                     return lerp(col1, col2, mipFract);

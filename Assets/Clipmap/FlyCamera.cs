@@ -18,8 +18,8 @@ public class FlyCamera : MonoBehaviour
 
     public float mainSpeed = 100.0f; //regular speed
 
-    public const float YMin = -45.0f;
-    public const float YMax = 45.0f;
+    public const float YMin = -85.0f;
+    public const float YMax = 85.0f;
     public float camSens = 1; //How sensitive it with mouse
     float currY = 0;
     float currX = 0;
@@ -37,7 +37,7 @@ public class FlyCamera : MonoBehaviour
 
         float xRot = Input.GetAxis("Mouse X") * camSens;
         float yRot = Input.GetAxis("Mouse Y") * camSens;
-        currY += Mathf.Clamp(yRot, YMin, YMax);
+        currY = Mathf.Clamp(currY + yRot, YMin, YMax);
         currX += xRot;
         
         Vector3 direction = Quaternion.Euler(currY, 0, 0) * new Vector3(0, 0, -10);
