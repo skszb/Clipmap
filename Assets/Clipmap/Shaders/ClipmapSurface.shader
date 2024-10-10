@@ -3,19 +3,7 @@ Shader "Unlit/ClipmapSurface"
 
     Properties
     {
-        _BaseMapSize("Mip0 Texture Size", Integer) = 1024
-
-        _ClipmapStack ("Clipmap Stack", 2DArray) = "white" {}
-
-        _ClipmapStackSize("Clipmap Stack Size", Integer) = 4
-        
-        _ClipSize("ClipSize", Integer) = 16
-        
-        _ClipmapUpdateGridSize("_ClipmapUpdateGridSize", Integer) = 2
-
-        _InvalidBorder("Invalid Border", Integer) = 1
-
-        _WorldGridSize("World Grid Size", float) = 1.0
+        _ClipmapLevel ("Clipmap Levels", 2DArray) = "white" {}
     }
 
     SubShader
@@ -32,7 +20,9 @@ Shader "Unlit/ClipmapSurface"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             SAMPLER(sampler_BaseMap);
-        
+
+
+
             struct appdata
             {
                 float3 vPos : POSITION;
@@ -48,17 +38,13 @@ Shader "Unlit/ClipmapSurface"
             // To ensure that the Unity shader is SRP Batcher compatible, 
             // declare all Material properties inside
             CBUFFER_START(UnityPerMaterial)
-                Texture2DArray _ClipmapStack;
-                const int _MaxCount;
-                const int _ClipmapStackSize;
-                int2 _ClipmapCenter[2];
-                
-                int _ClipSize;
-                int _BaseMapSize;
-                int _InvalidBorder;
-                float _WorldGridSize;
-                SamplerState sampler_ClipmapStack;
+                Texture2DArray _ClipmapLevel;
             CBUFFER_END
+
+            uniform int _ClipmapStackSize = 4;  // Default values does not work! Unity sets all non-property values to 0; 
+            uniform float _WorldGridSize = 1;
+            uniform float _BaseMapSize = 1;
+            SamplerState sampler_ClipmapLevel;
 
             v2f vert (appdata v)
             {
@@ -98,19 +84,19 @@ Shader "Unlit/ClipmapSurface"
             #define BLEND 0
             float4 frag (v2f i) : SV_Target
             {
-                int mipLevelCoarse;                                
-                int mipLevelFine;
-                float mipFract;
+                // return float4(_BaseMapSize, _WorldGridSize, 0, 1);
+                int mipLevelCoarse = 0;                                
+                int mipLevelFine = 0;
+                float mipFract = 0;
                 GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
 
                 float2 newUV = i.uv;
-                GetClipmapUV(mipLevelFine, newUV);
+                // GetClipmapUV(mipLevelFine, newUV);
                 
-                // float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelFine));
-                float4 col1 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(newUV, mipLevelFine));
+                float4 col1 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(newUV, mipLevelFine));
                 
                 #if BLEND 
-                    float4 col2 = _ClipmapStack.Sample(sampler_ClipmapStack, float3(i.uv, mipLevelCoarse));
+                    float4 col2 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(i.uv, mipLevelCoarse));
                     return lerp(col1, col2, mipFract);
                 #else
                     return col1;
