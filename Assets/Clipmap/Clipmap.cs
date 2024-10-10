@@ -19,22 +19,12 @@ public struct ClipmapParam
 
 public class Clipmap : MonoBehaviour
 {
-    // The length in one dimension of a grid in world space that binds to one texel.
-    // Used to convert player coordinate to homogeneous coordinate: homogeneousCoordinate = worldCoordinate / worldGridSize
-    private int m_worldGridSize;
+
 
     // The length in one dimension of a grid in texture space.
     // Depends on clip center deviation, the clipmap will only update a multiple of MipGridSize pixels in a direction
     private int m_clipmapUpdateGridSize;
 
-    // The number of texels in one dimension in a stack level
-    private int m_clipSize;
-    private int m_clipHalfSize;
-
-    // The number of texels in one dimension from both ends, used to determine whether to wait for mipTexture update
-    private int m_invalidBorder;
-
-    private int m_clipmapStackSize;
 
     private int m_clipmapLevelCount;
     private TextureFormat m_mipTextureFormat;
@@ -51,12 +41,27 @@ public class Clipmap : MonoBehaviour
 
     private int[] m_mipSize;
     private int[] m_mipHalfSize;
+
     // the bounding box of the safe region that the clipmap center can move, so that the clipmap level does not include areas beyond the mip texture
     private AABB2Int[] m_clipmapCenterSafeRegion;
     private Vector2Int[] m_clipmapCenter;
 
 
     #region Variables that are passed to the surface shader
+    // The length in one dimension of a grid in world space that binds to one texel.
+    // Used to convert player coordinate to homogeneous coordinate: homogeneousCoordinate = worldCoordinate / worldGridSize
+    private int m_worldGridSize;
+
+    // The number of texels in one dimension in a stack level
+    private int m_clipSize;
+    private int m_clipHalfSize;
+
+    // The number of texels in one dimension from both ends, used to determine whether to wait for mipTexture update
+    private int m_invalidBorder;
+
+    // The number of levels in the clipmap stack
+    private int m_clipmapStackSize;
+
     #endregion
 
     public void Intialize(ClipmapParam param)
