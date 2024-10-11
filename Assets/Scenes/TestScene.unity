@@ -652,7 +652,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: f70fb7a2a06e2774988e9778871dc198, type: 2}
+  - {fileID: 2100000, guid: e6a1e0e7ef2e83340948c5759202aaeb, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -719,17 +719,15 @@ MonoBehaviour:
     clipmapUpdateGridSize: 16
     mipTextureFormat: 4
     baseTexture:
-    - {fileID: 2800000, guid: d699b279c68a33c4fb4ea39863f20a5b, type: 3}
-    - {fileID: 2800000, guid: 0aa7a473c54f9ee4681d0e9e124e007a, type: 3}
-    - {fileID: 2800000, guid: 4c33514663fa456429a7865271be5b07, type: 3}
-    - {fileID: 2800000, guid: 806eebbd90100794ba4844812b394019, type: 3}
-    - {fileID: 2800000, guid: fb7c66e9ca4727949b3569158bd8948c, type: 3}
+    - {fileID: 2800000, guid: 0fb93ea1fb3424846928d5eab39e5483, type: 3}
+    - {fileID: 2800000, guid: 293588df7bae1e3458e74968b5670a5f, type: 3}
+    - {fileID: 2800000, guid: b190585c209dc1b4daadf10004d9df8b, type: 3}
+    - {fileID: 2800000, guid: 5f55ebb02d83069449815fe3ffd4a7b2, type: 3}
   ClipmapLevelDisplay:
   - {fileID: 298679583}
   - {fileID: 1862192502}
   - {fileID: 2103083388}
-  ClipmapDisplay: {fileID: 1352345652}
-  OverrideBaseTexture: 1
+  - {fileID: 1859485451}
 --- !u!114 &1352345656
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -742,7 +740,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56b39ba935cba49499d41aa380878bad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_clipmapLevel: {fileID: 0}
+  m_surfaceRenderer: {fileID: 1352345652}
 --- !u!1 &1758256165
 GameObject:
   m_ObjectHideFlags: 0

@@ -3,7 +3,7 @@ Shader "Unlit/ClipmapSurface"
 
     Properties
     {
-        _ClipmapLevel ("Clipmap Levels", 2DArray) = "white" {}
+        _ClipmapLevel ("Clipmap Levels", 2DArray) = "red" {}
     }
 
     SubShader
@@ -19,9 +19,29 @@ Shader "Unlit/ClipmapSurface"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            SAMPLER(sampler_BaseMap);
 
+            #define CLIPMAP_MAX_SIZE 6           
 
+            // To ensure that the Unity shader is SRP Batcher compatible, 
+            // declare all Material properties inside
+            CBUFFER_START(UnityPerMaterial)
+                // Properties
+                Texture2DArray _ClipmapLevel;
+            
+                // Uniforms
+                float _WorldGridSize;
+                int _InvalidBorder;
+                int _ClipSize;
+                int _ClipmapStackLevelCount;
+
+                float2 _ClipmapCenter[CLIPMAP_MAX_SIZE];
+                float _MipSize[CLIPMAP_MAX_SIZE];
+                float _MipHalfSize[CLIPMAP_MAX_SIZE];
+                float _ClipSizeScaleToMip[CLIPMAP_MAX_SIZE];       
+
+                SamplerState sampler_ClipmapLevel;
+            CBUFFER_END
+            
 
             struct appdata
             {
@@ -29,23 +49,46 @@ Shader "Unlit/ClipmapSurface"
                 float2 uv : TEXCOORD0;
             };
 
+
             struct v2f
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
             };
 
-            // To ensure that the Unity shader is SRP Batcher compatible, 
-            // declare all Material properties inside
-            CBUFFER_START(UnityPerMaterial)
-                Texture2DArray _ClipmapLevel;
-            CBUFFER_END
+            
+            // transform the uv in mip0 to the toroidal uv in the clipmap stack 
+            void GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
+            {
+                float scale = _ClipSizeScaleToMip[clipmapStackLevel];
+                uv = frac(uv * scale);
+            }
 
-            uniform int _ClipmapStackSize = 4;  // Default values does not work! Unity sets all non-property values to 0; 
-            uniform float _WorldGridSize = 1;
-            uniform float _BaseMapSize = 1;
-            SamplerState sampler_ClipmapLevel;
+            
+            void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction) 
+            {
+                // To be changed to forloop with step() to define coarse and fine (ref CalculateMacroClipmapLevel in o3de)
+                float2 homogeneousCoord = (uv - 0.5) * _MipSize[0];
+                int clipmapLevelincludeCount = 0;
+                for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex) {
+                    // check mip coordinate within clipmap
+                    // if not contain, go to next corser level
+                    float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex] + 0.5) * _ClipSizeScaleToMip[levelIndex];
+                    float2 sqrDiff = diff * diff;
 
+                    float2 halfSize = 0.5 * _MipSize[levelIndex] * _ClipSizeScaleToMip[levelIndex];
+                    float2 sqrHalfSize = halfSize * halfSize;
+
+                    float2 containXY = step(sqrDiff, sqrHalfSize);
+                    float contain = step(1.5, containXY.x + containXY.y); // x+y = [0, 1, 2], 2 means within clipmap
+                    clipmapLevelincludeCount += contain;
+                }
+                fine = _ClipmapStackLevelCount - clipmapLevelincludeCount;
+                coarse = min(fine + 1, _ClipmapStackLevelCount); 
+                fraction = 0;
+            }
+
+            
             v2f vert (appdata v)
             {
                 v2f o;
@@ -54,44 +97,17 @@ Shader "Unlit/ClipmapSurface"
                 return o;
             }
 
-            // transform the uv in mip0 to the toroidal uv in the clipmap stack 
-            void GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
-            {
-                float scale = 1.0;
-                for (int i = clipmapStackLevel; i < _ClipmapStackSize - 1; i++) {
-                    scale *= 0.5;
-                }
-                uv = uv % scale / scale;
-            }
-
-            void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction) 
-            {
-                float2 dx = ddx(uv);
-                float2 dy = ddy(uv);
-                float maxSqrPixelDiff = max(dot(dx, dx), dot(dy, dy)) * _BaseMapSize * _BaseMapSize * _WorldGridSize * _WorldGridSize;
-                float mipLevel = 0.5 * log2(maxSqrPixelDiff);
-                int mipLevelFine = floor(mipLevel);
-                int mipLevelCoarse = mipLevelFine + 1;
-                float mipFract = frac(mipLevel);
-
-                coarse = mipLevelCoarse;
-                fine = mipLevelFine;
-                fraction = mipFract;
-
-                // To be changed to forloop with step() to define coarse and fine (ref CalculateMacroClipmapLevel in O3de)
-            }
 
             #define BLEND 0
             float4 frag (v2f i) : SV_Target
             {
-                // return float4(_BaseMapSize, _WorldGridSize, 0, 1);
                 int mipLevelCoarse = 0;                                
                 int mipLevelFine = 0;
                 float mipFract = 0;
                 GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
 
                 float2 newUV = i.uv;
-                // GetClipmapUV(mipLevelFine, newUV);
+                GetClipmapUV(mipLevelFine, newUV);
                 
                 float4 col1 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(newUV, mipLevelFine));
                 

@@ -3,8 +3,7 @@ guid: 58ed8ea509858a8419392e89cc8e4f17
 ShaderImporter:
   externalObjects: {}
   defaultTextures:
-  - _MainTex: {instanceID: 0}
-  - _Tex: {instanceID: 0}
+  - _ClipmapLevel: {instanceID: 0}
   nonModifiableTextures: []
   userData: 
   assetBundleName: 

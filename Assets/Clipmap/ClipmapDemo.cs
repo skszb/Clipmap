@@ -20,10 +20,6 @@ public class ClipmapDemo : MonoBehaviour
 
     public Renderer[] ClipmapLevelDisplay;
 
-    public Renderer ClipmapDisplay;
-
-    public bool OverrideBaseTexture = true;
-
     // Start is called before the first frame update
     void Start()
     {
@@ -38,11 +34,6 @@ public class ClipmapDemo : MonoBehaviour
             ClipmapLevelDisplay[i].material.SetFloat("_ClipmapStackLevelIndex", i);
         }
 
-        if (OverrideBaseTexture)
-        {
-            ClipmapDisplay.material.SetTexture("_ClipmapStack", clipmapStackTextureArray);
-            ClipmapDisplay.material.SetInteger("_BaseMapSize", Param.baseTexture[0].width);
-        }
     }
 
     // Update is called once per frame
