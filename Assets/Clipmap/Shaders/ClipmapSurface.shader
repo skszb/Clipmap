@@ -19,7 +19,6 @@ Shader "Unlit/ClipmapSurface"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-
             #define CLIPMAP_MAX_SIZE 6           
 
             // To ensure that the Unity shader is SRP Batcher compatible, 
@@ -29,15 +28,17 @@ Shader "Unlit/ClipmapSurface"
                 Texture2DArray _ClipmapLevel;
             
                 // Uniforms
-                float _WorldGridSize;
+                float _WorldScale;
                 int _InvalidBorder;
                 int _ClipSize;
+                int _ClipHalfSize;
                 int _ClipmapStackLevelCount;
 
                 float2 _ClipmapCenter[CLIPMAP_MAX_SIZE];
                 float _MipSize[CLIPMAP_MAX_SIZE];
                 float _MipHalfSize[CLIPMAP_MAX_SIZE];
-                float _ClipSizeScaleToMip[CLIPMAP_MAX_SIZE];       
+                float _ClipScaleToMip[CLIPMAP_MAX_SIZE];  
+                float _MipScaleToWorld[CLIPMAP_MAX_SIZE];     
 
                 SamplerState sampler_ClipmapLevel;
             CBUFFER_END
@@ -60,27 +61,22 @@ Shader "Unlit/ClipmapSurface"
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
             void GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
             {
-                float scale = _ClipSizeScaleToMip[clipmapStackLevel];
-                uv = frac(uv * scale);
+                uv = frac(uv * _ClipScaleToMip[clipmapStackLevel]);
             }
 
             
             void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction) 
             {
-                // To be changed to forloop with step() to define coarse and fine (ref CalculateMacroClipmapLevel in o3de)
                 float2 homogeneousCoord = (uv - 0.5) * _MipSize[0];
                 int clipmapLevelincludeCount = 0;
                 for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex) {
-                    // check mip coordinate within clipmap
-                    // if not contain, go to next corser level
-                    float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex] + 0.5) * _ClipSizeScaleToMip[levelIndex];
+                    float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex] + 0.5) * _MipScaleToWorld[levelIndex];
                     float2 sqrDiff = diff * diff;
 
-                    float2 halfSize = 0.5 * _MipSize[levelIndex] * _ClipSizeScaleToMip[levelIndex];
-                    float2 sqrHalfSize = halfSize * halfSize;
-
+                    float2 sqrHalfSize = pow(_ClipHalfSize * _MipScaleToWorld[levelIndex], 2);
                     float2 containXY = step(sqrDiff, sqrHalfSize);
-                    float contain = step(1.5, containXY.x + containXY.y); // x+y = [0, 1, 2], 2 means within clipmap
+                    // x+y = [0, 1, 2], 2 means the coordinates in both axis are within the current clipmap level
+                    float contain = step(1.5, containXY.x + containXY.y); 
                     clipmapLevelincludeCount += contain;
                 }
                 fine = _ClipmapStackLevelCount - clipmapLevelincludeCount;
@@ -108,15 +104,12 @@ Shader "Unlit/ClipmapSurface"
 
                 float2 newUV = i.uv;
                 GetClipmapUV(mipLevelFine, newUV);
-                
                 float4 col1 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(newUV, mipLevelFine));
-                
-                #if BLEND 
-                    float4 col2 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(i.uv, mipLevelCoarse));
-                    return lerp(col1, col2, mipFract);
-                #else
-                    return col1;
-                #endif
+
+                float3 cols[4] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
+
+                return col1;
+                return float4(cols[mipLevelFine], 1);
             }
             ENDHLSL
         }
