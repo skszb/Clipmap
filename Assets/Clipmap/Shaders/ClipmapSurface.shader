@@ -4,6 +4,9 @@ Shader "Unlit/ClipmapSurface"
     Properties
     {
         _ClipmapLevel ("Clipmap Levels", 2DArray) = "red" {}
+
+        _EnableTransitionRegionOverlay ("_ShowTransitionRegion", float) = 0
+
     }
 
     SubShader
@@ -26,6 +29,7 @@ Shader "Unlit/ClipmapSurface"
             CBUFFER_START(UnityPerMaterial)
                 // Properties
                 Texture2DArray _ClipmapLevel;
+                float _EnableTransitionRegionOverlay;
             
                 // Uniforms
                 float _WorldScale;
@@ -65,23 +69,32 @@ Shader "Unlit/ClipmapSurface"
             }
 
             
-            void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction) 
+            void GetClipmapStackLevels(in float2 uv, out int coarseLevelIndex, out int fineLevelIndex, out float fraction) 
             {
                 float2 homogeneousCoord = (uv - 0.5) * _MipSize[0];
                 int clipmapLevelincludeCount = 0;
                 for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex) {
-                    float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex] + 0.5) * _MipScaleToWorld[levelIndex];
+                    float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex]) * _MipScaleToWorld[levelIndex];
                     float2 sqrDiff = diff * diff;
 
-                    float2 sqrHalfSize = pow(_ClipHalfSize * _MipScaleToWorld[levelIndex], 2);
+                    float2 sqrHalfSize = pow((_ClipHalfSize) * _MipScaleToWorld[levelIndex], 2);
                     float2 containXY = step(sqrDiff, sqrHalfSize);
                     // x+y = [0, 1, 2], 2 means the coordinates in both axis are within the current clipmap level
                     float contain = step(1.5, containXY.x + containXY.y); 
                     clipmapLevelincludeCount += contain;
                 }
-                fine = _ClipmapStackLevelCount - clipmapLevelincludeCount;
-                coarse = min(fine + 1, _ClipmapStackLevelCount); 
-                fraction = 0;
+                fineLevelIndex = _ClipmapStackLevelCount - clipmapLevelincludeCount;
+                coarseLevelIndex = min(fineLevelIndex + 1, _ClipmapStackLevelCount); 
+                // Blending algorithm from: https://hhoppe.com/proj/geomclipmap/
+                
+                // To be optimized VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV 
+                float w = 0.2;
+                float2 diff = homogeneousCoord - (_ClipmapCenter[fineLevelIndex]) * _MipScaleToWorld[fineLevelIndex];
+                float2 halfSize = _ClipHalfSize * _MipScaleToWorld[fineLevelIndex];
+                float2 proportion = (abs(diff) + 1) / halfSize;
+                proportion = (proportion - (1 - w)) / w;
+                fraction = max(proportion.x, proportion.y);
+                fraction = clamp(fraction, 0, 1);
             }
 
             
@@ -94,22 +107,28 @@ Shader "Unlit/ClipmapSurface"
             }
 
 
-            #define BLEND 0
             float4 frag (v2f i) : SV_Target
             {
+                float4 retCol;
                 int mipLevelCoarse = 0;                                
                 int mipLevelFine = 0;
                 float mipFract = 0;
                 GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
 
-                float2 newUV = i.uv;
-                GetClipmapUV(mipLevelFine, newUV);
-                float4 col1 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(newUV, mipLevelFine));
+                float2 fineUV = i.uv;
+                GetClipmapUV(mipLevelFine, fineUV);
+                float2 coarseUV = i.uv;
+                GetClipmapUV(mipLevelCoarse, coarseUV);
 
-                float3 cols[4] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
+                float4 col1 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(fineUV, mipLevelFine));
+                float4 col2 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(coarseUV, mipLevelCoarse));
+                
+                retCol = lerp(col1, col2, 0);
 
-                return col1;
-                return float4(cols[mipLevelFine], 1);
+                float3 transitionRegionOverlayColors[8] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}, {1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
+                retCol += float4(transitionRegionOverlayColors[mipLevelFine].rgb * mipFract, 1) * _EnableTransitionRegionOverlay;
+
+                return retCol;
             }
             ENDHLSL
         }
