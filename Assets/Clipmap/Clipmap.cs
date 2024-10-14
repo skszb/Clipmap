@@ -58,8 +58,8 @@ public class Clipmap : MonoBehaviour
         private Texture2DArray m_clipmapLevel;
         
         // The snapped center of each clipmap level in the texture space
-        private Vector2Int[] m_clipmapCenter;
-        private Vector4[] m_clipmapCenterFloat; // cached for passing to shader
+        private Vector2Int[] m_clipmapCenterInMipSpace;
+        private Vector4[] m_clipmapCenterInMipSpaceFloat; // cached for passing to shader
 
     /* -------- Only sync when initialize -------- */
 
@@ -116,8 +116,8 @@ public class Clipmap : MonoBehaviour
 
         m_clipmapStackLevelCount = m_clipmapLevelCount - 1;
         m_clipmapStackCache = new Texture2D[m_clipmapStackLevelCount];
-        m_clipmapCenter = new Vector2Int[m_clipmapStackLevelCount];
-        m_clipmapCenterFloat = new Vector4[m_clipmapStackLevelCount];
+        m_clipmapCenterInMipSpace = new Vector2Int[m_clipmapStackLevelCount];
+        m_clipmapCenterInMipSpaceFloat = new Vector4[m_clipmapStackLevelCount];
 
         m_clipmapCenterSafeRegion = new AABB2Int[m_clipmapStackLevelCount];
 
@@ -158,9 +158,9 @@ public class Clipmap : MonoBehaviour
             // Set clipmap centers outside the mip area so that their textures will be automatically loaded in the first update
             int safeRegionHalfSize = m_mipHalfSize[mipLevelIndex] - m_clipHalfSize;
             m_clipmapCenterSafeRegion[mipLevelIndex] = new AABB2Int(-safeRegionHalfSize, -safeRegionHalfSize, safeRegionHalfSize, safeRegionHalfSize);
-            m_clipmapCenter[mipLevelIndex] = m_clipmapCenterSafeRegion[mipLevelIndex].min - new Vector2Int(m_clipSize, m_clipSize);
-            m_clipmapCenterFloat[mipLevelIndex].x = m_clipmapCenter[mipLevelIndex].x;
-            m_clipmapCenterFloat[mipLevelIndex].y = m_clipmapCenter[mipLevelIndex].y;
+            m_clipmapCenterInMipSpace[mipLevelIndex] = m_clipmapCenterSafeRegion[mipLevelIndex].min - new Vector2Int(m_clipSize, m_clipSize);
+            m_clipmapCenterInMipSpaceFloat[mipLevelIndex].x = m_clipmapCenterInMipSpace[mipLevelIndex].x;
+            m_clipmapCenterInMipSpaceFloat[mipLevelIndex].y = m_clipmapCenterInMipSpace[mipLevelIndex].y;
 
             m_clipScaleToMip[mipLevelIndex] = clipScaleToMip;
             m_mipScaleToWorld[mipLevelIndex] = mipScaleToWorld;
@@ -190,19 +190,13 @@ public class Clipmap : MonoBehaviour
             updatedClipmapCenter.x = Math.Clamp(updatedClipmapCenter.x, clipmapCenterSafeRegion.min.x, clipmapCenterSafeRegion.max.x);
             updatedClipmapCenter.y = Math.Clamp(updatedClipmapCenter.y, clipmapCenterSafeRegion.min.y, clipmapCenterSafeRegion.max.y);
 
-            Vector2Int diff = updatedClipmapCenter - m_clipmapCenter[clipmapStackLevelIndex];
+            Vector2Int diff = updatedClipmapCenter - m_clipmapCenterInMipSpace[clipmapStackLevelIndex];
             Vector2Int absDiff = new Vector2Int(Math.Abs(diff.x), Math.Abs(diff.y));
 
-            if (diff.sqrMagnitude < 0.1)
+            if (diff.sqrMagnitude < 0.01)
             {
                 continue;
             }
-            Debug.Log("-----------------------------------------");
-            for(int i = 0; i < m_clipmapCenterFloat.Length; ++i)
-            {
-                Debug.Log("Center " + i + " coordinate: "+ m_clipmapCenterFloat[i].ToSafeString());
-            }
-
 
 
             // find the updated regions in the mip space
@@ -287,11 +281,19 @@ public class Clipmap : MonoBehaviour
                                          m_clipmapLevel, clipmapStackLevelIndex, 0, dstX, dstY);
                 }
             }
-            m_clipmapCenter[clipmapStackLevelIndex] = updatedClipmapCenter;
-            m_clipmapCenterFloat[clipmapStackLevelIndex].x = updatedClipmapCenter.x;
-            m_clipmapCenterFloat[clipmapStackLevelIndex].y = updatedClipmapCenter.y;
+            m_clipmapCenterInMipSpace[clipmapStackLevelIndex] = updatedClipmapCenter;
+            m_clipmapCenterInMipSpaceFloat[clipmapStackLevelIndex].x = updatedClipmapCenter.x;
+            m_clipmapCenterInMipSpaceFloat[clipmapStackLevelIndex].y = updatedClipmapCenter.y;
+
+
+            // DEBUG
+            //Debug.Log("---------- Clipmap Centers --------------------");
+            //for (int i = 0; i < m_clipmapCenterInMipSpaceFloat.Length; ++i)
+            //{
+            //    Debug.Log("Center " + i + " coordinate: " + m_clipmapCenterInMipSpaceFloat[i].ToSafeString());
+            //}
         }
-        m_Material.SetVectorArray("_ClipmapCenter", m_clipmapCenterFloat);
+        m_Material.SetVectorArray("_ClipmapCenter", m_clipmapCenterInMipSpaceFloat);
 
     }
     // Snap the center to multiples of m_mipUpdateGridSize
@@ -308,5 +310,16 @@ public class Clipmap : MonoBehaviour
     private void Start()
     {
         m_Material = GetComponent<Renderer>().material;
+    }
+
+    private void OnDrawGizmos()
+    {
+        //for (int slice = 0; slice < m_clipmapCenter.Length; ++slice)
+        //{
+        //    Vector3 centerInWorldSpace = transform.position;
+        //    centerInWorldSpace.x += m_clipmapCenter[slice].x * ;
+        //    centerInWorldSpace.z += m_clipmapCenter[slice].y;
+        //    Gizmos.DrawWireCube(transform.position, new Vector3(1, 1, 1));
+        //}
     }
 };

@@ -24,6 +24,8 @@ public class FlyCamera : MonoBehaviour
     float currY = 0;
     float currX = 0;
 
+    public bool pause = false;
+
     private void Start()
     {
         Cursor.visible = false;
@@ -32,6 +34,16 @@ public class FlyCamera : MonoBehaviour
 
     void LateUpdate()
     {
+        if (Input.GetKeyUp(KeyCode.P))
+        {
+            pause = !pause;
+            Cursor.visible = !Cursor.visible;
+            Cursor.lockState = Cursor.lockState != CursorLockMode.None ? 
+                CursorLockMode.None : CursorLockMode.Confined;
+        }
+
+        if (pause) { return; }
+
         Cursor.visible = false;
         Cursor.lockState = CursorLockMode.Confined;
 

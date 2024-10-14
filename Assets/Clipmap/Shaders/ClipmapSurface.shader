@@ -19,7 +19,8 @@ Shader "Unlit/ClipmapSurface"
             #pragma target 3.0
             #pragma vertex vert
             #pragma fragment frag
-
+            #pragma enable_d3d11_debug_symbols
+            
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             #define CLIPMAP_MAX_SIZE 6           
@@ -43,10 +44,16 @@ Shader "Unlit/ClipmapSurface"
                 float _MipHalfSize[CLIPMAP_MAX_SIZE];
                 float _ClipScaleToMip[CLIPMAP_MAX_SIZE];  
                 float _MipScaleToWorld[CLIPMAP_MAX_SIZE];     
-
-                SamplerState sampler_ClipmapLevel;
+                
             CBUFFER_END
             
+            SamplerState sampler_ClipmapLevel{
+                MinLOD = 0;
+                MaxLOD = 0;
+                BorderColor = {1,1,1,1};
+                AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+                AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+            };
 
             struct appdata
             {
@@ -61,7 +68,7 @@ Shader "Unlit/ClipmapSurface"
                 float2 uv : TEXCOORD0;
             };
 
-            
+            // ========== Helper Function =============================================================================
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
             void GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
             {
@@ -88,16 +95,16 @@ Shader "Unlit/ClipmapSurface"
                 // Blending algorithm from: https://hhoppe.com/proj/geomclipmap/
                 
                 // To be optimized VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV 
-                float w = 0.2;
+                float w = 0.1;
                 float2 diff = homogeneousCoord - (_ClipmapCenter[fineLevelIndex]) * _MipScaleToWorld[fineLevelIndex];
                 float2 halfSize = _ClipHalfSize * _MipScaleToWorld[fineLevelIndex];
-                float2 proportion = (abs(diff) + 1) / halfSize;
+                float2 proportion = (abs(diff) + 1) / halfSize; 
                 proportion = (proportion - (1 - w)) / w;
                 fraction = max(proportion.x, proportion.y);
                 fraction = clamp(fraction, 0, 1);
             }
 
-            
+            // ========== Shader Stage =============================================================================
             v2f vert (appdata v)
             {
                 v2f o;
@@ -105,7 +112,6 @@ Shader "Unlit/ClipmapSurface"
                 o.uv = 1.0 - v.uv;
                 return o;
             }
-
 
             float4 frag (v2f i) : SV_Target
             {
@@ -119,11 +125,11 @@ Shader "Unlit/ClipmapSurface"
                 GetClipmapUV(mipLevelFine, fineUV);
                 float2 coarseUV = i.uv;
                 GetClipmapUV(mipLevelCoarse, coarseUV);
-
-                float4 col1 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(fineUV, mipLevelFine));
-                float4 col2 = _ClipmapLevel.Sample(sampler_ClipmapLevel, float3(coarseUV, mipLevelCoarse));
                 
-                retCol = lerp(col1, col2, 0);
+                float4 col1 = col1 = _ClipmapLevel.SampleLevel(sampler_ClipmapLevel, float3(fineUV, mipLevelFine), 0);
+                float4 col2 = _ClipmapLevel.SampleLevel(sampler_ClipmapLevel, float3(coarseUV, mipLevelCoarse), 0);
+                
+                retCol = lerp(col1, col2, mipFract);
 
                 float3 transitionRegionOverlayColors[8] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}, {1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
                 retCol += float4(transitionRegionOverlayColors[mipLevelFine].rgb * mipFract, 1) * _EnableTransitionRegionOverlay;
