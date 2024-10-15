@@ -70,7 +70,7 @@ Shader "Unlit/ClipmapSurface"
 
             // ========== Helper Function =============================================================================
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
-            void GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
+            void GetClipmapUV(in int clipmapStackLevel, inout float2 uv) 
             {
                 uv = frac(uv * _ClipScaleToMip[clipmapStackLevel]);
             }
@@ -78,6 +78,7 @@ Shader "Unlit/ClipmapSurface"
             
             void GetClipmapStackLevels(in float2 uv, out int coarseLevelIndex, out int fineLevelIndex, out float fraction) 
             {
+                // mip calculation by world space
                 float2 homogeneousCoord = (uv - 0.5) * _MipSize[0];
                 int clipmapLevelincludeCount = 0;
                 for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex) {
@@ -91,9 +92,21 @@ Shader "Unlit/ClipmapSurface"
                     clipmapLevelincludeCount += contain;
                 }
                 fineLevelIndex = _ClipmapStackLevelCount - clipmapLevelincludeCount;
-                coarseLevelIndex = min(fineLevelIndex + 1, _ClipmapStackLevelCount); 
-                // Blending algorithm from: https://hhoppe.com/proj/geomclipmap/
+
+                // isotropic sampling 
+                // To be updated to anisotropic VVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+                float2 dx = ddx(uv);
+                float2 dy = ddy(uv);
+                float maxSqrPixelDiff = max(dot(dx, dx), dot(dy, dy)) * _MipSize[0] * _MipSize[0];
+                float mipLevelScreenSpace = 0.5 * log2(maxSqrPixelDiff);
+                int mipLevelScreenSpaceFine = floor(mipLevelScreenSpace);
+                float mipLevelScreenSpaceFract = frac(mipLevelScreenSpace);
+
+                // combine world space and screen space
+                fineLevelIndex = min(max(fineLevelIndex, mipLevelScreenSpaceFine), _ClipmapStackLevelCount);
+                coarseLevelIndex = fineLevelIndex + 1;
                 
+                // Blending algorithm from: https://hhoppe.com/proj/geomclipmap/
                 // To be optimized VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV 
                 float w = 0.1;
                 float2 diff = homogeneousCoord - (_ClipmapCenter[fineLevelIndex]) * _MipScaleToWorld[fineLevelIndex];
@@ -101,7 +114,10 @@ Shader "Unlit/ClipmapSurface"
                 float2 proportion = (abs(diff) + 1) / halfSize; 
                 proportion = (proportion - (1 - w)) / w;
                 fraction = max(proportion.x, proportion.y);
+
                 fraction = clamp(fraction, 0, 1);
+                fineLevelIndex = clamp(fineLevelIndex, 0, _ClipmapStackLevelCount);
+                coarseLevelIndex = clamp(coarseLevelIndex, 0, _ClipmapStackLevelCount);
             }
 
             // ========== Shader Stage =============================================================================
@@ -131,9 +147,9 @@ Shader "Unlit/ClipmapSurface"
                 
                 retCol = lerp(col1, col2, mipFract);
 
-                float3 transitionRegionOverlayColors[8] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}, {1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
+                float3 transitionRegionOverlayColors[8] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,0}, {1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
                 retCol += float4(transitionRegionOverlayColors[mipLevelFine].rgb * mipFract, 1) * _EnableTransitionRegionOverlay;
-
+                retCol = float4(transitionRegionOverlayColors[mipLevelFine], 1);
                 return retCol;
             }
             ENDHLSL

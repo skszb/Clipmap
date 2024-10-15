@@ -35,7 +35,7 @@ public class Clipmap : MonoBehaviour
     public Renderer m_surfaceRenderer;
     private Material m_Material;
 
-    // The length in one dimension of a grid in texture space.
+    // The length in one dimension of a grid in mip space.
     // Depends on clip center deviation, the clipmap will only update a multiple of MipGridSize pixels in a direction
     private int m_clipmapUpdateGridSize;
 
@@ -57,7 +57,7 @@ public class Clipmap : MonoBehaviour
         // The levels before the last compose the clipmap stack, each clipmap stack level is a proportion of the corrisponding mipmap level
         private Texture2DArray m_clipmapLevel;
         
-        // The snapped center of each clipmap level in the texture space
+        // The snapped center of each clipmap level in the mip space
         private Vector2Int[] m_clipmapCenterInMipSpace;
         private Vector4[] m_clipmapCenterInMipSpaceFloat; // cached for passing to shader
 
