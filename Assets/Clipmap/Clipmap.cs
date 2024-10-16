@@ -179,67 +179,76 @@ public class Clipmap : MonoBehaviour
         Vector2 centerInWorldSpace = new Vector2(cameraPositionInWorldSpace.x, cameraPositionInWorldSpace.z);
         float height = cameraPositionInWorldSpace.y;
 
-        Vector2 centerInHomogeneousSpace = centerInWorldSpace / m_worldScale;
+        Vector2 centerInHomogeneousSpace = centerInWorldSpace / m_worldScale ;
         Vector2 centerInMipSpace = centerInHomogeneousSpace;
         for (int clipmapStackLevelIndex = 0; clipmapStackLevelIndex < m_clipmapStackLevelCount; clipmapStackLevelIndex++, centerInMipSpace /= 2)
         {
-            // confining the clipmap level within its corresponding mipmap level
+            // The coordinate of snapped center is floored, so we added a positive bias of half grid size to the player's position 
+            // this ensures that the boundary that triggers clipmap update is [-0.5, 0.5) around the center instead of [0, 1);
+            Vector2Int updatedClipmapCenter = GetSnappedCenter(centerInMipSpace + m_clipmapUpdateGridSize * new Vector2(0.5f, 0.5f));
+
+            // Confine the clipmap level within its corresponding mipmap level
             // then calculate the region that needs to be updated
             AABB2Int clipmapCenterSafeRegion = m_clipmapCenterSafeRegion[clipmapStackLevelIndex];
-            Vector2Int updatedClipmapCenter = GetSnappedCenter(centerInMipSpace);
             updatedClipmapCenter.x = Math.Clamp(updatedClipmapCenter.x, clipmapCenterSafeRegion.min.x, clipmapCenterSafeRegion.max.x);
             updatedClipmapCenter.y = Math.Clamp(updatedClipmapCenter.y, clipmapCenterSafeRegion.min.y, clipmapCenterSafeRegion.max.y);
 
             Vector2Int diff = updatedClipmapCenter - m_clipmapCenterInMipSpace[clipmapStackLevelIndex];
             Vector2Int absDiff = new Vector2Int(Math.Abs(diff.x), Math.Abs(diff.y));
 
+            // We are updating from the level of highest precision
+            // so if current one doesn't need update, we can safely skip the rest
             if (diff.sqrMagnitude < 0.01)
             {
-                continue;
+                break;
             }
 
-
-            // find the updated regions in the mip space
-            AABB2Int verticalUpdateZone = new AABB2Int();
+            // Find the updated regions in the mip space
+            // We separate the update regions into two parts:
+            // (1) the update zone because of the movement along the x-axis
+            // (2) the update zone because of the movement along the y-axis, excluding the overlapping area in (1) if any
+            AABB2Int xUpdateZone = new AABB2Int();
             if (absDiff.x > 0)
             {
                 if (diff.x < 0)
                 {
-                    verticalUpdateZone.min.x = updatedClipmapCenter.x - m_clipHalfSize;
-                    verticalUpdateZone.max.x = verticalUpdateZone.min.x + absDiff.x;
+                    xUpdateZone.min.x = updatedClipmapCenter.x - m_clipHalfSize;
+                    xUpdateZone.max.x = xUpdateZone.min.x + absDiff.x;
                 }
                 else
                 {
-                    verticalUpdateZone.max.x = updatedClipmapCenter.x + m_clipHalfSize;
-                    verticalUpdateZone.min.x = verticalUpdateZone.max.x - absDiff.x;
+                    xUpdateZone.max.x = updatedClipmapCenter.x + m_clipHalfSize;
+                    xUpdateZone.min.x = xUpdateZone.max.x - absDiff.x;
                 }
-                verticalUpdateZone.min.y = updatedClipmapCenter.y - m_clipHalfSize;
-                verticalUpdateZone.max.y = verticalUpdateZone.min.y + m_clipSize;
+                xUpdateZone.min.y = updatedClipmapCenter.y - m_clipHalfSize;
+                xUpdateZone.max.y = xUpdateZone.min.y + m_clipSize;
             }
 
-            AABB2Int horizontalUpdateZone = new AABB2Int();
+            // We will skip vertical update if there is no displacement along the y-axis or
+            // if the x-axis displacement is too large that already covers the entire clipmap
+            AABB2Int yUpdateZone = new AABB2Int();
             if (absDiff.y > 0 && absDiff.x < m_clipSize)
             {
                 if (diff.y < 0)
                 {
-                    horizontalUpdateZone.min.y = updatedClipmapCenter.y - m_clipHalfSize;
-                    horizontalUpdateZone.max.y = horizontalUpdateZone.min.y + absDiff.y;
+                    yUpdateZone.min.y = updatedClipmapCenter.y - m_clipHalfSize;
+                    yUpdateZone.max.y = yUpdateZone.min.y + absDiff.y;
                 }
                 else
                 {
-                    horizontalUpdateZone.max.y = updatedClipmapCenter.y + m_clipHalfSize;
-                    horizontalUpdateZone.min.y = horizontalUpdateZone.max.y - absDiff.y;
+                    yUpdateZone.max.y = updatedClipmapCenter.y + m_clipHalfSize;
+                    yUpdateZone.min.y = yUpdateZone.max.y - absDiff.y;
                 }
 
                 if (diff.x < 0)
                 {
-                    horizontalUpdateZone.max.x = updatedClipmapCenter.x + m_clipHalfSize;
-                    horizontalUpdateZone.min.x = horizontalUpdateZone.max.x - m_clipSize + absDiff.x;
+                    yUpdateZone.max.x = updatedClipmapCenter.x + m_clipHalfSize;
+                    yUpdateZone.min.x = yUpdateZone.max.x - m_clipSize + absDiff.x;
                 }
                 else
                 {
-                    horizontalUpdateZone.min.x = updatedClipmapCenter.x - m_clipHalfSize;
-                    horizontalUpdateZone.max.x = horizontalUpdateZone.min.x + m_clipSize - absDiff.x;
+                    yUpdateZone.min.x = updatedClipmapCenter.x - m_clipHalfSize;
+                    yUpdateZone.max.x = yUpdateZone.min.x + m_clipSize - absDiff.x;
                 }
             }
 
@@ -258,7 +267,7 @@ public class Clipmap : MonoBehaviour
             int mipHalfSize = m_mipHalfSize[clipmapStackLevelIndex];
             foreach(AABB2Int tile in tilesToUpdate)
             {
-                AABB2Int verticalPart = verticalUpdateZone.Clamp(tile);
+                AABB2Int verticalPart = xUpdateZone.Clamp(tile);
                 if (verticalPart.isValid())
                 {
                     int srcX = verticalPart.min.x + mipHalfSize;
@@ -269,7 +278,7 @@ public class Clipmap : MonoBehaviour
                                          verticalPart.Width(), verticalPart.Height(),
                                          m_clipmapLevel, clipmapStackLevelIndex, 0, dstX, dstY);
                 }
-                AABB2Int horizontalPart = horizontalUpdateZone.Clamp(tile);
+                AABB2Int horizontalPart = yUpdateZone.Clamp(tile);
                 if (horizontalPart.isValid())
                 {
                     int srcX = horizontalPart.min.x + mipHalfSize;
@@ -314,12 +323,5 @@ public class Clipmap : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        //for (int slice = 0; slice < m_clipmapCenter.Length; ++slice)
-        //{
-        //    Vector3 centerInWorldSpace = transform.position;
-        //    centerInWorldSpace.x += m_clipmapCenter[slice].x * ;
-        //    centerInWorldSpace.z += m_clipmapCenter[slice].y;
-        //    Gizmos.DrawWireCube(transform.position, new Vector3(1, 1, 1));
-        //}
     }
 };

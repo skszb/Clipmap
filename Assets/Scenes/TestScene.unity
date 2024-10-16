@@ -360,8 +360,8 @@ Transform:
   m_GameObject: {fileID: 298679580}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11796, y: 0, z: -6318}
-  m_LocalScale: {x: 512, y: 1, z: 512}
+  m_LocalPosition: {x: 11983, y: 0, z: -5486}
+  m_LocalScale: {x: 256, y: 1, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -840,7 +840,7 @@ Transform:
   m_GameObject: {fileID: 719661108}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.5288676, z: -0, w: 0.8487043}
-  m_LocalPosition: {x: 803, y: 1.67, z: 859}
+  m_LocalPosition: {x: -78, y: 1.67, z: -51}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1178,7 +1178,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: e6a1e0e7ef2e83340948c5759202aaeb, type: 2}
+  - {fileID: 1396586130}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1240,9 +1240,9 @@ MonoBehaviour:
   m_clipMap: {fileID: 1352345656}
   Param:
     clipSize: 256
-    invalidBorder: 32
+    invalidBorder: 64
     worldScale: 1
-    clipmapUpdateGridSize: 64
+    clipmapUpdateGridSize: 32
     mipTextureFormat: 4
     baseTexture:
     - {fileID: 2800000, guid: 0fb93ea1fb3424846928d5eab39e5483, type: 3}
@@ -1267,6 +1267,38 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_surfaceRenderer: {fileID: 1352345652}
+--- !u!21 &1396586130
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Unlit_ClipmapSurface (Instance)
+  m_Shader: {fileID: 4800000, guid: 58ed8ea509858a8419392e89cc8e4f17, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _ClipmapLevel:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _EnableTransitionRegionOverlay: 1
+    m_Colors: []
+  m_BuildTextureStacks: []
 --- !u!1 &1636846454
 GameObject:
   m_ObjectHideFlags: 0
@@ -1658,8 +1690,8 @@ Transform:
   m_GameObject: {fileID: 1859485448}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11796, y: 0, z: -4607}
-  m_LocalScale: {x: 512, y: 1, z: 512}
+  m_LocalPosition: {x: 11983, y: 0, z: -4650}
+  m_LocalScale: {x: 256, y: 1, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -1763,8 +1795,8 @@ Transform:
   m_GameObject: {fileID: 1862192499}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11796, y: 0, z: -5742}
-  m_LocalScale: {x: 512, y: 1, z: 512}
+  m_LocalPosition: {x: 11983, y: 0, z: -5206}
+  m_LocalScale: {x: 256, y: 1, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -1868,8 +1900,8 @@ Transform:
   m_GameObject: {fileID: 2103083385}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11796, y: 0, z: -5161}
-  m_LocalScale: {x: 512, y: 1, z: 512}
+  m_LocalPosition: {x: 11983, y: 0, z: -4929}
+  m_LocalScale: {x: 256, y: 1, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}

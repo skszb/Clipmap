@@ -75,7 +75,6 @@ Shader "Unlit/ClipmapSurface"
                 uv = frac(uv * _ClipScaleToMip[clipmapStackLevel]);
             }
 
-            
             void GetClipmapStackLevels(in float2 uv, out int coarseLevelIndex, out int fineLevelIndex, out float fraction) 
             {
                 // mip calculation by world space
@@ -148,8 +147,8 @@ Shader "Unlit/ClipmapSurface"
                 retCol = lerp(col1, col2, mipFract);
 
                 float3 transitionRegionOverlayColors[8] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,0}, {1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
-                retCol += float4(transitionRegionOverlayColors[mipLevelFine].rgb * mipFract, 1) * _EnableTransitionRegionOverlay;
-                retCol = float4(transitionRegionOverlayColors[mipLevelFine], 1);
+                retCol = lerp(retCol, float4(transitionRegionOverlayColors[mipLevelFine].rgb * _EnableTransitionRegionOverlay, 1), mipFract * _EnableTransitionRegionOverlay);
+                // retCol = float4(transitionRegionOverlayColors[mipLevelFine], 1);
                 return retCol;
             }
             ENDHLSL
