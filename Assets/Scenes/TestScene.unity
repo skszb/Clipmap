@@ -1130,6 +1130,7 @@ GameObject:
   - component: {fileID: 1352345651}
   - component: {fileID: 1352345656}
   - component: {fileID: 1352345655}
+  - component: {fileID: 1352345657}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -1267,6 +1268,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_surfaceRenderer: {fileID: 1352345652}
+--- !u!154 &1352345657
+TerrainCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1352345650}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_TerrainData: {fileID: 0}
+  m_EnableTreeColliders: 1
 --- !u!21 &1396586130
 Material:
   serializedVersion: 8

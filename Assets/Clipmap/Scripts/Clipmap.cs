@@ -303,7 +303,6 @@ public class Clipmap : MonoBehaviour
             //}
         }
         m_Material.SetVectorArray("_ClipmapCenter", m_clipmapCenterInMipSpaceFloat);
-
     }
     // Snap the center to multiples of m_mipUpdateGridSize
     private Vector2Int GetSnappedCenter(Vector2 worldCenter)
