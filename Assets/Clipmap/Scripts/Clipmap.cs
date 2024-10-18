@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using UnityEngine.XR;
 
@@ -68,7 +69,7 @@ public class Clipmap : MonoBehaviour
         private int m_worldScale = 1;
 
         // The number of texels in one dimension from both ends, used to determine whether to wait for mipTexture update
-        private int m_invalidBorder;
+        private int m_invalidBorder; // TODO: Update every frame: https://notkyon.moe/vt/Clipmap.pdf
 
         // The number of texels in one dimension in a stack level
         private int m_clipSize;
@@ -318,6 +319,7 @@ public class Clipmap : MonoBehaviour
     private void Start()
     {
         m_Material = GetComponent<Renderer>().material;
+        CopyTextureSupport ty = SystemInfo.copyTextureSupport;
     }
 
     private void OnDrawGizmos()
