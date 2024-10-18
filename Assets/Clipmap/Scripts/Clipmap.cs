@@ -206,8 +206,8 @@ public class Clipmap : MonoBehaviour
 
             // Find the updated regions in the mip space
             // We separate the update regions into two parts:
-            // (1) the update zone because of the movement along the x-axis
-            // (2) the update zone because of the movement along the y-axis, excluding the overlapping area in (1) if any
+            // (1) the rectangular update zone that is of the size (x,clipSize)
+            // (2) the rest of the update zone
             AABB2Int xUpdateZone = new AABB2Int();
             if (absDiff.x > 0)
             {
@@ -266,8 +266,11 @@ public class Clipmap : MonoBehaviour
                                         bottomLeftTile + m_clipSize};
 
             int mipHalfSize = m_mipHalfSize[clipmapStackLevelIndex];
-            foreach(AABB2Int tile in tilesToUpdate)
+
+            // TODO: ?? instead of looping by tiles, loop by xUpdateZone and yUpdateZone so that we can batch them and bind with center displacement, allowing large updates across frames
+            foreach (AABB2Int tile in tilesToUpdate) 
             {
+                // TODO: get from cache
                 AABB2Int verticalPart = xUpdateZone.Clamp(tile);
                 if (verticalPart.isValid())
                 {
