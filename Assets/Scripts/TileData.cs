@@ -5,8 +5,7 @@ using Unity.Collections;
 using UnityEngine;
 
 [Serializable]
-class TextureTileData : ScriptableObject
+class TileData : ScriptableObject
 {
-    public NativeArray<byte> data;
-
+    public byte[] rawData;
 }

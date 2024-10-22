@@ -31,9 +31,9 @@ public class Example
     static void ExampleScript()
     {
         CreateAssets();
-        // NamesExample();
-        // LabelsExample();
-        // TypesExample();
+        NamesExample();
+        LabelsExample();
+        TypesExample();
     }
 
     static void CreateAssets()
