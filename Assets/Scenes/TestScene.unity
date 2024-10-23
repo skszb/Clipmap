@@ -361,7 +361,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 11983, y: 0, z: -5486}
-  m_LocalScale: {x: 256, y: 1, z: 256}
+  m_LocalScale: {x: 256, y: 0, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -1239,17 +1239,6 @@ MonoBehaviour:
   PlayerPawn: {fileID: 719661111}
   WorldOrigin: {fileID: 1352345654}
   m_clipMap: {fileID: 1352345656}
-  Param:
-    clipSize: 256
-    invalidBorder: 64
-    worldScale: 1
-    clipmapUpdateGridSize: 32
-    mipTextureFormat: 4
-    baseTexture:
-    - {fileID: 2800000, guid: 0fb93ea1fb3424846928d5eab39e5483, type: 3}
-    - {fileID: 2800000, guid: 293588df7bae1e3458e74968b5670a5f, type: 3}
-    - {fileID: 2800000, guid: b190585c209dc1b4daadf10004d9df8b, type: 3}
-    - {fileID: 2800000, guid: 5f55ebb02d83069449815fe3ffd4a7b2, type: 3}
   ClipmapLevelDisplay:
   - {fileID: 298679583}
   - {fileID: 1862192502}
@@ -1267,7 +1256,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56b39ba935cba49499d41aa380878bad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_surfaceRenderer: {fileID: 1352345652}
+  m_clipmapConfiguration: {fileID: 11400000, guid: 82c3c3c10a3c16c40a9013d153350264,
+    type: 2}
 --- !u!154 &1352345657
 TerrainCollider:
   m_ObjectHideFlags: 0
@@ -1312,6 +1302,14 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _ClipmapLevel:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ClipmapPyramid:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ClipmapStack:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -1712,7 +1710,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 11983, y: 0, z: -4650}
-  m_LocalScale: {x: 256, y: 1, z: 256}
+  m_LocalScale: {x: 256, y: 0, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -1817,7 +1815,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 11983, y: 0, z: -5206}
-  m_LocalScale: {x: 256, y: 1, z: 256}
+  m_LocalScale: {x: 256, y: 0, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -1922,7 +1920,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 11983, y: 0, z: -4929}
-  m_LocalScale: {x: 256, y: 1, z: 256}
+  m_LocalScale: {x: 256, y: 0, z: 256}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -2007,7 +2005,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2132923169}
-  - component: {fileID: 2132923170}
   m_Layer: 0
   m_Name: Objects
   m_TagString: Untagged
@@ -2036,23 +2033,6 @@ Transform:
   - {fileID: 1174274644}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2132923170
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2132923168}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9062a8ba16a948049af4f757a632707a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tileSize: 32
-  count: 0
-  srcPath: Textures/Mips/BMP
-  dstPath: Textures/Mips/TiledMips
-  fileName: mip
 --- !u!1 &2139513201
 GameObject:
   m_ObjectHideFlags: 0

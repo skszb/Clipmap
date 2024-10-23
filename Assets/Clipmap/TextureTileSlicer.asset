@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9062a8ba16a948049af4f757a632707a, type: 3}
+  m_Name: TextureTileSlicer
+  m_EditorClassIdentifier: 
+  tileSize: 128
+  textures:
+  - {fileID: 2800000, guid: 5f55ebb02d83069449815fe3ffd4a7b2, type: 3}

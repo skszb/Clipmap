@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 
@@ -16,24 +15,20 @@ public class ClipmapDemo : MonoBehaviour
     [SerializeField]
     private Clipmap m_clipMap;
 
-    public ClipmapParam Param;
 
     public Renderer[] ClipmapLevelDisplay;
 
     // Start is called before the first frame update
     void Start()
     {
-        Vector3 worldCoordinate = PlayerPawn.position - WorldOrigin.position;
-        m_clipMap.Intialize(Param);
-        m_clipMap.UpdateClipmap(PlayerPawn.position - WorldOrigin.position);
 
         Texture2DArray clipmapStackTextureArray = m_clipMap.GetClipmapStackTexture();
         for (int i = 0; i < ClipmapLevelDisplay.Length; i++)
         {
             ClipmapLevelDisplay[i].material.SetTexture("_ClipmapStack", clipmapStackTextureArray);
             ClipmapLevelDisplay[i].material.SetFloat("_ClipmapStackLevelIndex", i);
+            ClipmapLevelDisplay[i].material.SetFloat("_ClipmapStackLevelCount", ClipmapLevelDisplay.Length);
         }
-
     }
 
     // Update is called once per frame

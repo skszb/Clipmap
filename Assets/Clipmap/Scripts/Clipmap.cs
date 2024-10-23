@@ -1,22 +1,9 @@
 using System;
 using System.Drawing;
-using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.UIElements;
-using UnityEngine.XR;
 
-[Serializable]
-public struct ClipmapParam
-{
-    public int clipSize;
-    public int invalidBorder;
-    public int worldScale;
-    public int clipmapUpdateGridSize;
-
-    public TextureFormat mipTextureFormat;
-    public Texture2D[] baseTexture;
-}
 
 /*
 Terminologies:
@@ -30,10 +17,19 @@ Terminologies:
                                  [ 2: 512x512   ]                                                [ 2: -256x255   ]
  */
 
+
 // [ExecuteInEditMode]
 public class Clipmap : MonoBehaviour
 {
-    public Renderer m_surfaceRenderer;
+    struct ClipmapLevelInfo
+    {
+        public AABB2Int CenterSafeRegion;
+        public Vector2Int CenterInMipSpace;
+    }
+
+    [SerializeField] 
+    private ClipmapConfiguration m_clipmapConfiguration;
+
     private Material m_Material;
 
     // The length in one dimension of a grid in mip space.
@@ -56,13 +52,14 @@ public class Clipmap : MonoBehaviour
         // The texture array that contains both the clipmap stack and the clipmap pyramid.
         // The last level is the top of clipmap pyramid, which is a mipmap that covers the whole texture
         // The levels before the last compose the clipmap stack, each clipmap stack level is a proportion of the corrisponding mipmap level
-        private Texture2DArray m_clipmapLevel;
+        private Texture2DArray m_clipmapStack;
+        private Texture2D m_clipmapPyramid;
         
         // The snapped center of each clipmap level in the mip space
         private Vector2Int[] m_clipmapCenterInMipSpace;
         private Vector4[] m_clipmapCenterInMipSpaceFloat; // cached for passing to shader
 
-    /* -------- Only sync when initialize -------- */
+        /* -------- Only sync when initialize -------- */
 
         // The length in one dimension of a grid in world space that binds to one texel.
         // Used to convert player coordinate to homogeneous coordinate (mip0 coordinate): homogeneousCoordinate = worldCoordinate / m_worldScale
@@ -89,31 +86,30 @@ public class Clipmap : MonoBehaviour
         private float[] m_mipHalfSizeFloat; // cached for passing to shader
     #endregion
 
-    public void Intialize(ClipmapParam param)
+    public void Initialize()
     {
-        m_clipSize = param.clipSize;
-        m_clipHalfSize = m_clipSize >> 1;
-        m_worldScale = param.worldScale;
-        m_clipmapUpdateGridSize = param.clipmapUpdateGridSize;
-        m_invalidBorder = param.invalidBorder;
-        m_mipTextureFormat = param.mipTextureFormat;
+        m_clipSize = m_clipmapConfiguration.ClipSize;
+        m_worldScale = m_clipmapConfiguration.WorldScale;
+        m_clipmapUpdateGridSize = m_clipmapConfiguration.ClipmapUpdateGridSize;
+        m_invalidBorder = m_clipmapConfiguration.InvalidBorder;
+        m_mipTextureFormat = m_clipmapConfiguration.TextureFormat;
+        m_clipmapLevelCount = m_clipmapConfiguration.BaseTexture.Length;
 
-        m_clipmapLevelCount = param.baseTexture.Length;
+        m_clipHalfSize = m_clipSize >> 1;
         m_mipSize = new int[m_clipmapLevelCount];
         m_mipSizeFloat = new float[m_clipmapLevelCount];
         m_mipHalfSize = new int[m_clipmapLevelCount];
         m_mipHalfSizeFloat = new float[m_clipmapLevelCount];
-        m_baseMipTexture = new Texture2D[m_clipmapLevelCount];
+        m_baseMipTexture = m_clipmapConfiguration.BaseTexture;
         m_clipScaleToMip = new float[m_clipmapLevelCount];
         m_mipScaleToWorld = new float[m_clipmapLevelCount];
         for (int i = 0; i < m_clipmapLevelCount; i++)
         {
-            m_baseMipTexture[i] = param.baseTexture[i];
             m_mipSize[i] = m_baseMipTexture[i].width;
             m_mipSizeFloat[i] = m_mipSize[i];
             m_mipHalfSize[i] = m_baseMipTexture[i].width >> 1;
             m_mipHalfSizeFloat[i] = m_mipHalfSize[i];
-        }
+        }     
 
         m_clipmapStackLevelCount = m_clipmapLevelCount - 1;
         m_clipmapStackCache = new Texture2D[m_clipmapStackLevelCount];
@@ -124,7 +120,6 @@ public class Clipmap : MonoBehaviour
 
         InitializeMips();
 
-        m_Material = m_surfaceRenderer.material;
         m_Material.SetFloat("_WorldGridSize", m_worldScale);
         m_Material.SetInteger("_InvalidBorder", m_invalidBorder);
         m_Material.SetInteger("_ClipSize", m_clipSize);
@@ -134,17 +129,24 @@ public class Clipmap : MonoBehaviour
         m_Material.SetFloatArray("_MipHalfSize", m_mipHalfSizeFloat);
         m_Material.SetFloatArray("_ClipScaleToMip", m_clipScaleToMip);
         m_Material.SetFloatArray("_MipScaleToWorld", m_mipScaleToWorld);
-        m_Material.SetTexture("_ClipmapLevel", m_clipmapLevel);
+        m_Material.SetTexture("_ClipmapStack", m_clipmapStack);
+        m_Material.SetTexture("_ClipmapPyramid", m_clipmapPyramid);
+
     }
 
     // Create space for each level in the clipmap
     private void InitializeMips()
     {
-        m_clipmapLevel = new Texture2DArray(m_clipSize, m_clipSize, m_clipmapLevelCount, m_mipTextureFormat, true, false, true);
+        m_clipmapStack = new Texture2DArray(m_clipSize, m_clipSize, m_clipmapStackLevelCount, m_mipTextureFormat, false, false, true);
+        AssetDatabase.DeleteAsset("Assets/Clipmap/ClipmapStack.asset");
+        AssetDatabase.CreateAsset(m_clipmapStack, "Assets/Clipmap/ClipmapStack.asset");
+        m_clipmapPyramid = new Texture2D(m_clipSize, m_clipSize, m_mipTextureFormat, true, false, true);
+        AssetDatabase.DeleteAsset("Assets/Clipmap/ClipmapPyramid.asset");
+        AssetDatabase.CreateAsset(m_clipmapPyramid, "Assets/Clipmap/ClipmapPyramid.asset");
+
 
         int clipScaleToMip = 1 << m_clipmapStackLevelCount;
         int mipScaleToWorld = 1;
-
         for (int mipLevelIndex = 0; mipLevelIndex < m_clipmapStackLevelCount; mipLevelIndex++, clipScaleToMip >>= 1, mipScaleToWorld <<= 1) 
         {
             int mipSize = m_mipSize[mipLevelIndex];
@@ -169,7 +171,8 @@ public class Clipmap : MonoBehaviour
 
         // Use the last level as the clipmap pyramid, it is a fixed texture that covers the whole surface
         int lastLevelIndex = m_clipmapLevelCount - 1;
-        Graphics.CopyTexture(m_baseMipTexture[lastLevelIndex], 0, m_clipmapLevel, lastLevelIndex);
+
+        Graphics.CopyTexture(m_baseMipTexture[lastLevelIndex], m_clipmapPyramid);
 
         m_clipScaleToMip[lastLevelIndex] = clipScaleToMip;
         m_mipScaleToWorld[lastLevelIndex] = mipScaleToWorld;
@@ -280,7 +283,7 @@ public class Clipmap : MonoBehaviour
                     int dstY = verticalPart.min.y - tile.min.y;
                     Graphics.CopyTexture(m_clipmapStackCache[clipmapStackLevelIndex], 0, 0, srcX, srcY,
                                          verticalPart.Width(), verticalPart.Height(),
-                                         m_clipmapLevel, clipmapStackLevelIndex, 0, dstX, dstY);
+                                         m_clipmapStack, clipmapStackLevelIndex, 0, dstX, dstY);
                 }
                 AABB2Int horizontalPart = yUpdateZone.Clamp(tile);
                 if (horizontalPart.isValid())
@@ -291,7 +294,7 @@ public class Clipmap : MonoBehaviour
                     int dstY = horizontalPart.min.y - tile.min.y;
                     Graphics.CopyTexture(m_clipmapStackCache[clipmapStackLevelIndex], 0, 0, srcX, srcY,
                                          horizontalPart.Width(), horizontalPart.Height(),
-                                         m_clipmapLevel, clipmapStackLevelIndex, 0, dstX, dstY);
+                                         m_clipmapStack, clipmapStackLevelIndex, 0, dstX, dstY);
                 }
             }
             m_clipmapCenterInMipSpace[clipmapStackLevelIndex] = updatedClipmapCenter;
@@ -308,6 +311,7 @@ public class Clipmap : MonoBehaviour
         }
         m_Material.SetVectorArray("_ClipmapCenter", m_clipmapCenterInMipSpaceFloat);
     }
+
     // Snap the center to multiples of m_mipUpdateGridSize
     private Vector2Int GetSnappedCenter(Vector2 worldCenter)
     {
@@ -316,16 +320,18 @@ public class Clipmap : MonoBehaviour
 
     public Texture2DArray GetClipmapStackTexture()
     {
-        return m_clipmapLevel;
+        return m_clipmapStack;
     }
 
-    private void Start()
+    private void Awake()
     {
         m_Material = GetComponent<Renderer>().material;
         CopyTextureSupport ty = SystemInfo.copyTextureSupport;
+        Initialize();
     }
 
     private void OnDrawGizmos()
     {
     }
+
 };

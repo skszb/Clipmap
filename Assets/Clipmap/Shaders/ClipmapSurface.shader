@@ -3,7 +3,8 @@ Shader "Unlit/ClipmapSurface"
 
     Properties
     {
-        _ClipmapLevel ("Clipmap Levels", 2DArray) = "red" {}
+        _ClipmapStack ("Clipmap Stack", 2DArray) = "white" {}
+        _ClipmapPyramid ("Clipmap Pyramid", 2D) = "white" {}
 
         _EnableTransitionRegionOverlay ("_ShowTransitionRegion", float) = 0
 
@@ -29,7 +30,8 @@ Shader "Unlit/ClipmapSurface"
             // declare all Material properties inside
             CBUFFER_START(UnityPerMaterial)
                 // Properties
-                Texture2DArray _ClipmapLevel;
+                Texture2DArray _ClipmapStack;
+                Texture2D _ClipmapPyramid;
                 float _EnableTransitionRegionOverlay;
             
                 // Uniforms
@@ -47,7 +49,7 @@ Shader "Unlit/ClipmapSurface"
                 
             CBUFFER_END
             
-            SamplerState sampler_ClipmapLevel{
+            SamplerState sampler_ClipmapStack{
                 MinLOD = 0;
                 MaxLOD = 0;
                 BorderColor = {1,1,1,1};
@@ -61,7 +63,6 @@ Shader "Unlit/ClipmapSurface"
                 float2 uv : TEXCOORD0;
             };
 
-
             struct v2f
             {
                 float4 pos : SV_POSITION;
@@ -70,7 +71,7 @@ Shader "Unlit/ClipmapSurface"
 
             // ========== Helper Function =============================================================================
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
-            void GetClipmapUV(in int clipmapStackLevel, inout float2 uv) 
+            void GetClipmapUV(inout float2 uv, in int clipmapStackLevel) 
             {
                 uv = frac(uv * _ClipScaleToMip[clipmapStackLevel]);
             }
@@ -80,7 +81,8 @@ Shader "Unlit/ClipmapSurface"
                 // mip calculation by world space
                 float2 homogeneousCoord = (uv - 0.5) * _MipSize[0];
                 int clipmapLevelincludeCount = 0;
-                for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex) {
+                for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex) 
+                {
                     float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex]) * _MipScaleToWorld[levelIndex];
                     float2 sqrDiff = diff * diff;
 
@@ -91,7 +93,7 @@ Shader "Unlit/ClipmapSurface"
                     clipmapLevelincludeCount += contain;
                 }
                 fineLevelIndex = _ClipmapStackLevelCount - clipmapLevelincludeCount;
-
+                
                 // isotropic sampling 
                 // To be updated to anisotropic VVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
                 float2 dx = ddx(uv);
@@ -118,6 +120,18 @@ Shader "Unlit/ClipmapSurface"
                 fineLevelIndex = clamp(fineLevelIndex, 0, _ClipmapStackLevelCount);
                 coarseLevelIndex = clamp(coarseLevelIndex, 0, _ClipmapStackLevelCount);
             }
+            
+            float4 SampleClipmap(float2 uv, int depth) 
+            {
+                if (depth >= _ClipmapStackLevelCount) 
+                {
+                    return _ClipmapPyramid.Sample(sampler_ClipmapStack, uv);
+                }
+                else {
+                    GetClipmapUV(uv, depth);
+                    return _ClipmapStack.SampleLevel(sampler_ClipmapStack, float3(uv, depth), 0);
+                }
+            }
 
             // ========== Shader Stage =============================================================================
             v2f vert (appdata v)
@@ -136,13 +150,8 @@ Shader "Unlit/ClipmapSurface"
                 float mipFract = 0;
                 GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
 
-                float2 fineUV = i.uv;
-                GetClipmapUV(mipLevelFine, fineUV);
-                float2 coarseUV = i.uv;
-                GetClipmapUV(mipLevelCoarse, coarseUV);
-                
-                float4 col1 = col1 = _ClipmapLevel.SampleLevel(sampler_ClipmapLevel, float3(fineUV, mipLevelFine), 0);
-                float4 col2 = _ClipmapLevel.SampleLevel(sampler_ClipmapLevel, float3(coarseUV, mipLevelCoarse), 0);
+                float4 col1 = SampleClipmap(i.uv, mipLevelFine);
+                float4 col2 = SampleClipmap(i.uv, mipLevelCoarse);
                 
                 retCol = lerp(col1, col2, mipFract);
 
