@@ -138,12 +138,11 @@ public class Clipmap : MonoBehaviour
     private void InitializeMips()
     {
         m_clipmapStack = new Texture2DArray(m_clipSize, m_clipSize, m_clipmapStackLevelCount, m_mipTextureFormat, false, false, true);
-        AssetDatabase.DeleteAsset("Assets/Clipmap/ClipmapStack.asset");
-        AssetDatabase.CreateAsset(m_clipmapStack, "Assets/Clipmap/ClipmapStack.asset");
+        AssetDatabase.DeleteAsset("Assets/Cache/ClipmapCache/ClipmapStack.asset");
+        AssetDatabase.CreateAsset(m_clipmapStack, "Assets/Cache/ClipmapCache/ClipmapStack.asset");
         m_clipmapPyramid = new Texture2D(m_clipSize, m_clipSize, m_mipTextureFormat, true, false, true);
-        AssetDatabase.DeleteAsset("Assets/Clipmap/ClipmapPyramid.asset");
-        AssetDatabase.CreateAsset(m_clipmapPyramid, "Assets/Clipmap/ClipmapPyramid.asset");
-
+        AssetDatabase.DeleteAsset("Assets/Cache/ClipmapCache/ClipmapPyramid.asset");
+        AssetDatabase.CreateAsset(m_clipmapPyramid, "Assets/Cache/ClipmapCache/ClipmapPyramid.asset");
 
         int clipScaleToMip = 1 << m_clipmapStackLevelCount;
         int mipScaleToWorld = 1;

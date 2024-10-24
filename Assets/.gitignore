@@ -1,2 +1,2 @@
-# Ignore the pregenerated clipmap cache
-TextureTileCache/*
+# Ignore the pregenerated or intermediate cache
+Cache/*

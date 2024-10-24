@@ -16,16 +16,16 @@ public class TextureTileSlicer : ScriptableObject
     public Texture2D[] textures;
 
     private const string folderName = "TextureTileCache";
-    private const string folderPath =  "Assets/" + folderName;
+    private const string folderFullPath = "Assets/Cache/" + folderName;
 
     void ClearTileData()
     {
         
-        if (Directory.Exists(folderPath))
+        if (Directory.Exists(folderFullPath))
         {
-            AssetDatabase.DeleteAsset(folderPath);
+            AssetDatabase.DeleteAsset(folderFullPath);
         }
-        AssetDatabase.CreateFolder("Assets", folderName);
+        AssetDatabase.CreateFolder("Assets/Cache", folderName);
     }
 
     unsafe void GenerateTileData()
@@ -51,8 +51,8 @@ public class TextureTileSlicer : ScriptableObject
             NativeArray<byte> texData = currentTexture.GetPixelData<byte>(0);
 
             // Create a folder for caching the current texture tiles
-            AssetDatabase.CreateFolder(folderPath, textureID.ToString());
-            string currentFolderPath = Path.Combine(folderPath, textureID.ToString());
+            AssetDatabase.CreateFolder(folderFullPath, textureID.ToString());
+            string currentFolderPath = Path.Combine(folderFullPath, textureID.ToString());
 
             // Get tile data and save in the folder
             int textureSize = textures[textureID].width;
@@ -70,7 +70,7 @@ public class TextureTileSlicer : ScriptableObject
                                                 tileSize * vertexSize, 
                                                 tileSize);
                     
-                    TextureTile tile = new TextureTile();
+                    TextureTile tile = ScriptableObject.CreateInstance<TextureTile>();
                     tile.dimension = new int[2] { tileSize, tileSize };
                     tile.rawData = new byte[tileBufferSize];
                     intermediateBuffer.CopyTo(tile.rawData);
