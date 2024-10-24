@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9062a8ba16a948049af4f757a632707a, type: 3}
   m_Name: TextureTileSlicer
   m_EditorClassIdentifier: 
-  tileSize: 128
+  tileSize: 64
   textures:
+  - {fileID: 2800000, guid: 0fb93ea1fb3424846928d5eab39e5483, type: 3}
+  - {fileID: 2800000, guid: 293588df7bae1e3458e74968b5670a5f, type: 3}
+  - {fileID: 2800000, guid: b190585c209dc1b4daadf10004d9df8b, type: 3}
   - {fileID: 2800000, guid: 5f55ebb02d83069449815fe3ffd4a7b2, type: 3}

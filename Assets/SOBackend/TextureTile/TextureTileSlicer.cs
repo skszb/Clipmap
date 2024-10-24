@@ -71,7 +71,6 @@ public class TextureTileSlicer : ScriptableObject
                                                 tileSize);
                     
                     TextureTile tile = ScriptableObject.CreateInstance<TextureTile>();
-                    tile.dimension = new int[2] { tileSize, tileSize };
                     tile.rawData = new byte[tileBufferSize];
                     intermediateBuffer.CopyTo(tile.rawData);
 
