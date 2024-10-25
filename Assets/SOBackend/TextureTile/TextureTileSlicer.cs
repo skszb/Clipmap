@@ -16,16 +16,15 @@ public class TextureTileSlicer : ScriptableObject
     public Texture2D[] textures;
 
     private const string folderName = "TextureTileCache";
-    private const string folderFullPath = "Assets/Cache/" + folderName;
+    private const string folderFullPath = "Assets/Resources/Cache/" + folderName;
 
     void ClearTileData()
     {
-        
         if (Directory.Exists(folderFullPath))
         {
             AssetDatabase.DeleteAsset(folderFullPath);
         }
-        AssetDatabase.CreateFolder("Assets/Cache", folderName);
+        AssetDatabase.CreateFolder("Assets/Resources/Cache", folderName);
     }
 
     unsafe void GenerateTileData()
@@ -34,7 +33,7 @@ public class TextureTileSlicer : ScriptableObject
         for (int textureID = 0; textureID < textures.Length; ++textureID)
         {
             Texture2D currentTexture = textures[textureID];
-            if (currentTexture == null)
+            if (currentTexture is null)
             {
                 continue;
             }
@@ -42,7 +41,7 @@ public class TextureTileSlicer : ScriptableObject
             int vertexSize = GetVertexSizeInBytes(currentTexture);
             if (vertexSize == -1)
             {
-                Debug.Log(string.Format("Failed to slice texture{0}.", textureID));
+                Debug.LogWarning(string.Format("Failed to slice texture{0}.", textureID));
                 continue;
             }
             int tileBufferSize = tileSize * tileSize * vertexSize;
@@ -70,12 +69,16 @@ public class TextureTileSlicer : ScriptableObject
                                                 tileSize * vertexSize, 
                                                 tileSize);
                     
-                    TextureTile tile = ScriptableObject.CreateInstance<TextureTile>();
-                    tile.rawData = new byte[tileBufferSize];
-                    intermediateBuffer.CopyTo(tile.rawData);
-
+                    // TextureTile tile = ScriptableObject.CreateInstance<TextureTile>();
+                    // tile.rawData = new byte[tileBufferSize];
+                    // intermediateBuffer.CopyTo(tile.rawData);
+                    //
+                    // string assetPath = Path.Combine(currentFolderPath, String.Format("{0}_{1}.asset", u, v));
+                    // AssetDatabase.CreateAsset(tile, assetPath);
+                    Texture2D tex = new Texture2D(tileSize, tileSize, TextureFormat.RGBA32, false);
+                    tex.SetPixelData(intermediateBuffer, 0);
                     string assetPath = Path.Combine(currentFolderPath, String.Format("{0}_{1}.asset", u, v));
-                    AssetDatabase.CreateAsset(tile, assetPath);
+                    AssetDatabase.CreateAsset(tex, assetPath);
                 }
             }
         }
@@ -98,7 +101,7 @@ public class TextureTileSlicer : ScriptableObject
                 vertexSize = 4; 
                 break;
             default:
-                Debug.Log("Fail to slice texture: format not yet supported.");
+                Debug.LogWarning("Fail to slice texture: format not yet supported.");
                 vertexSize = - 1;
                 break;
         }

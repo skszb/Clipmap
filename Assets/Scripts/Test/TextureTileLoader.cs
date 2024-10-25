@@ -23,12 +23,10 @@ public class TextureTileLoader : ScriptableObject
             {
                 textures[i*2+j] = new Texture2D(128, 128);
                 //AssetDatabase.CreateAsset(textures[i * 2 + j], string.Format("Assets/TextureTileCache/Tmp{0}_{1}.asset", i, j));
-                TextureTile tileData = AssetDatabase.LoadAssetAtPath<TextureTile>(string.Format("Assets/Cache/TextureTileCache/0/{0}_{1}.asset", i, j));
+                TextureTile tileData = AssetDatabase.LoadAssetAtPath<TextureTile>(string.Format("Assets/Resources/Cache/TextureTileCache/0/{0}_{1}.asset", i, j));
                 textures[i*2+j].SetPixelData<byte>(tileData.rawData, 0);
                 textures[i*2+j].Apply();
             }
         }
     }
-    
-
 }

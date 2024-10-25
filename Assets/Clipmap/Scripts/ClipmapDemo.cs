@@ -21,11 +21,10 @@ public class ClipmapDemo : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-
-        Texture2DArray clipmapStackTextureArray = m_clipMap.GetClipmapStackTexture();
+        Texture2DArray clipmapStack = m_clipMap.ClipmapStack;
         for (int i = 0; i < ClipmapLevelDisplay.Length; i++)
         {
-            ClipmapLevelDisplay[i].material.SetTexture("_ClipmapStack", clipmapStackTextureArray);
+            ClipmapLevelDisplay[i].material.SetTexture("_ClipmapStack", clipmapStack);
             ClipmapLevelDisplay[i].material.SetFloat("_ClipmapStackLevelIndex", i);
             ClipmapLevelDisplay[i].material.SetFloat("_ClipmapStackLevelCount", ClipmapLevelDisplay.Length);
         }

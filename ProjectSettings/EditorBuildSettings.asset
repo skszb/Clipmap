@@ -9,5 +9,7 @@ EditorBuildSettings:
     path: Assets/Scenes/ClipmapStackUpdateDemo.unity
     guid: 99c9720ab356a0642a771bea13969a05
   m_configObjects:
+    com.unity.adaptiveperformance.loader_settings: {fileID: 11400000, guid: c691aaab04ba8684cbd91a2d92a87e08,
+      type: 2}
     com.unity.adaptiveperformance.simulator.provider_settings: {fileID: 11400000,
       guid: 00aa20d99d69b6d41a7015c73528fa72, type: 2}

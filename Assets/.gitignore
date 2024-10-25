@@ -1,2 +1,3 @@
 # Ignore the pregenerated or intermediate cache
 Cache/*
+Resources/Cache/*
