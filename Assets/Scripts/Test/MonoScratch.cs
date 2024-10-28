@@ -9,8 +9,8 @@ public class MonoScratch : MonoBehaviour
     
     private void Start()
     {
-        tileCacheManager = gameObject.AddComponent<TileCacheManager>();
-        tileCacheManager.Initialize(128, 2);
+        tileCacheManager = new TileCacheManager();
+        tileCacheManager.Initialize(this, 128, 2);
     }
 
     public TileCacheManager tileCacheManager;

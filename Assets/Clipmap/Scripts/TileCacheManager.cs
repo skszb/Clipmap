@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
-public class TileCacheManager : MonoBehaviour
+public class TileCacheManager
 {
     private enum CacheStatus
     {
@@ -74,23 +74,20 @@ public class TileCacheManager : MonoBehaviour
             }
 
             int index = cacheLookupTable[tileCoordinates];
-            switch (LoadingStatus[index])
+            CacheStatus status = LoadingStatus[index];
+            
+            if (status == CacheStatus.Missing)
             {
-                case CacheStatus.Missing:
-                    Debug.LogFormat("Cache({0}, {1}) Not Found, start loading", tileCoordinates.x, tileCoordinates.y);
-                    LoadingStatus[index] = CacheStatus.Loading;
-                    string tilePath =  String.Format("{0}/{1}_{2}", m_folderPath, tileCoordinates.x, tileCoordinates.y);
-                    m_owner.StartCoroutine(LoadTile(index, tilePath));
-                    break;
-                case CacheStatus.Loading:
-                    Debug.LogFormat("Cache({0}, {1}) is in processing", tileCoordinates.x, tileCoordinates.y);
-                    break;
-                case CacheStatus.Ready:
-                    Debug.LogFormat("Cache({0}, {1}) found", tileCoordinates.x, tileCoordinates.y);
-                    return TextureTiles[index];
-                default:
-                    return null;
+                LoadingStatus[index] = CacheStatus.Loading;
+                string tilePath =  String.Format("{0}/{1}_{2}", m_folderPath, tileCoordinates.x, tileCoordinates.y);
+                m_owner.StartCoroutine(LoadTile(index, tilePath));
             }
+
+            if (status == CacheStatus.Ready)
+            {
+                return TextureTiles[index];
+            }
+
             return null;
         }
         
@@ -119,12 +116,12 @@ public class TileCacheManager : MonoBehaviour
     
 
 
-    public void Initialize(int tileSize, int depth)
+    public void Initialize(MonoBehaviour owner, int tileSize, int depth)
     {
         m_tileCache = new List<TileCache>(depth);
         for (var i = 0; i < depth; ++i)
         {
-            m_tileCache.Add(new TileCache(this, tileSize, tileSize, m_path + "/" + i.ToString()));
+            m_tileCache.Add(new TileCache(owner, tileSize, tileSize, m_path + "/" + i.ToString()));
         }
     }
     
