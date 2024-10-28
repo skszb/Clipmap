@@ -10,7 +10,10 @@ Shader "Unlit/NewUnlitShader"
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"}
+        Tags
+        {
+            "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"
+        }
         LOD 100
 
         Pass
@@ -57,12 +60,13 @@ Shader "Unlit/NewUnlitShader"
                 // Returning the output.
                 return OUT;
             }
+
             // The fragment shader definition.
             half4 frag(Varyings IN) : SV_Target
             {
                 // Defining the color variable and returning it.
                 float period = 10;
-                float size  = 0.7;
+                float size = 0.7;
                 clip(-frac(IN.positionHCS.x / period) + size);
                 clip(-frac(IN.positionHCS.y / period) + size);
 

@@ -7,10 +7,13 @@ Shader "Unlit/TestShader"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags
+        {
+            "RenderType"="Opaque"
+        }
         LOD 100
 
-       Pass
+        Pass
         {
             HLSLPROGRAM
             #pragma target 3.0
@@ -20,7 +23,7 @@ Shader "Unlit/TestShader"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             SAMPLER(sampler_BaseMap);
-        
+
             struct appdata
             {
                 float3 vPos : POSITION;
@@ -48,7 +51,7 @@ Shader "Unlit/TestShader"
                 // SamplerState sampler_ClipmapStack;
             CBUFFER_END
 
-            v2f vert (appdata v)
+            v2f vert(appdata v)
             {
                 v2f o;
                 o.pos = TransformObjectToHClip(v.vPos);
@@ -57,13 +60,14 @@ Shader "Unlit/TestShader"
             }
 
 
-                int clipmapL = 3;
-                int clipmapS = 4;
+            int clipmapL = 3;
+            int clipmapS = 4;
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
-            float2 GetClipmapUV(int clipmapStackLevel, inout float2 uv) 
+            float2 GetClipmapUV(int clipmapStackLevel, inout float2 uv)
             {
                 float scale = 1.0;
-                for (int i = clipmapStackLevel; i < clipmapS; i++) {
+                for (int i = clipmapStackLevel; i < clipmapS; i++)
+                {
                     scale *= 0.5;
                 }
 
@@ -71,13 +75,12 @@ Shader "Unlit/TestShader"
                 return coordInMip;
             }
 
-            void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction) 
+            void GetClipmapStackLevels(in float2 uv, out int coarse, out int fine, out float fraction)
             {
-                
             }
 
 
-            float4 frag (v2f i) : SV_Target
+            float4 frag(v2f i) : SV_Target
             {
                 float2 mag = GetClipmapUV(clipmapL, i.uv);
                 return float4(mag, 0.0, 1.0);

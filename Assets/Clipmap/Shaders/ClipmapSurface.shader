@@ -12,7 +12,10 @@ Shader "Unlit/ClipmapSurface"
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"}
+        Tags
+        {
+            "RenderType"="Opaque" "RenderPipeline" = "UniversalPipeline"
+        }
 
         Pass
         {
@@ -21,10 +24,10 @@ Shader "Unlit/ClipmapSurface"
             #pragma vertex vert
             #pragma fragment frag
             #pragma enable_d3d11_debug_symbols
-            
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            #define CLIPMAP_MAX_SIZE 6           
+            #define CLIPMAP_MAX_SIZE 6
 
             // To ensure that the Unity shader is SRP Batcher compatible, 
             // declare all Material properties inside
@@ -33,7 +36,7 @@ Shader "Unlit/ClipmapSurface"
                 Texture2DArray _ClipmapStack;
                 Texture2D _ClipmapPyramid;
                 float _EnableTransitionRegionOverlay;
-            
+
                 // Uniforms
                 float _WorldScale;
                 int _InvalidBorder;
@@ -44,15 +47,16 @@ Shader "Unlit/ClipmapSurface"
                 float2 _ClipmapCenter[CLIPMAP_MAX_SIZE];
                 float _MipSize[CLIPMAP_MAX_SIZE];
                 float _MipHalfSize[CLIPMAP_MAX_SIZE];
-                float _ClipScaleToMip[CLIPMAP_MAX_SIZE];  
-                float _MipScaleToWorld[CLIPMAP_MAX_SIZE];     
-                
+                float _ClipScaleToMip[CLIPMAP_MAX_SIZE];
+                float _MipScaleToWorld[CLIPMAP_MAX_SIZE];
+
             CBUFFER_END
-            
-            SamplerState sampler_ClipmapStack{
+
+            SamplerState sampler_ClipmapStack
+            {
                 MinLOD = 0;
                 MaxLOD = 0;
-                BorderColor = {1,1,1,1};
+                BorderColor = {1, 1, 1, 1};
                 AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
                 AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
             };
@@ -71,17 +75,18 @@ Shader "Unlit/ClipmapSurface"
 
             // ========== Helper Function =============================================================================
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
-            void GetClipmapUV(inout float2 uv, in int clipmapStackLevel) 
+            void GetClipmapUV(inout float2 uv, in int clipmapStackLevel)
             {
                 uv = frac(uv * _ClipScaleToMip[clipmapStackLevel]);
             }
 
-            void GetClipmapStackLevels(in float2 uv, out int coarseLevelIndex, out int fineLevelIndex, out float fraction) 
+            void GetClipmapStackLevels(in float2 uv, out int coarseLevelIndex, out int fineLevelIndex,
+                                                                   out float fraction)
             {
                 // mip calculation by world space
                 float2 homogeneousCoord = (uv - 0.5) * _MipSize[0];
                 int clipmapLevelincludeCount = 0;
-                for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex) 
+                for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex)
                 {
                     float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex]) * _MipScaleToWorld[levelIndex];
                     float2 sqrDiff = diff * diff;
@@ -89,11 +94,11 @@ Shader "Unlit/ClipmapSurface"
                     float2 sqrHalfSize = pow((_ClipHalfSize) * _MipScaleToWorld[levelIndex], 2);
                     float2 containXY = step(sqrDiff, sqrHalfSize);
                     // x+y = [0, 1, 2], 2 means the coordinates in both axis are within the current clipmap level
-                    float contain = step(1.5, containXY.x + containXY.y); 
+                    float contain = step(1.5, containXY.x + containXY.y);
                     clipmapLevelincludeCount += contain;
                 }
                 fineLevelIndex = _ClipmapStackLevelCount - clipmapLevelincludeCount;
-                
+
                 // isotropic sampling 
                 // To be updated to anisotropic VVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
                 float2 dx = ddx(uv);
@@ -106,13 +111,13 @@ Shader "Unlit/ClipmapSurface"
                 // combine world space and screen space
                 fineLevelIndex = min(max(fineLevelIndex, mipLevelScreenSpaceFine), _ClipmapStackLevelCount);
                 coarseLevelIndex = fineLevelIndex + 1;
-                
+
                 // Blending algorithm from: https://hhoppe.com/proj/geomclipmap/
                 // To be optimized VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV 
                 float w = 0.1;
                 float2 diff = homogeneousCoord - (_ClipmapCenter[fineLevelIndex]) * _MipScaleToWorld[fineLevelIndex];
                 float2 halfSize = _ClipHalfSize * _MipScaleToWorld[fineLevelIndex];
-                float2 proportion = (abs(diff) + 1) / halfSize; 
+                float2 proportion = (abs(diff) + 1) / halfSize;
                 proportion = (proportion - (1 - w)) / w;
                 fraction = max(proportion.x, proportion.y);
 
@@ -120,21 +125,22 @@ Shader "Unlit/ClipmapSurface"
                 fineLevelIndex = clamp(fineLevelIndex, 0, _ClipmapStackLevelCount);
                 coarseLevelIndex = clamp(coarseLevelIndex, 0, _ClipmapStackLevelCount);
             }
-            
-            float4 SampleClipmap(float2 uv, int depth) 
+
+            float4 SampleClipmap(float2 uv, int depth)
             {
-                if (depth >= _ClipmapStackLevelCount) 
+                if (depth >= _ClipmapStackLevelCount)
                 {
                     return _ClipmapPyramid.Sample(sampler_ClipmapStack, uv);
                 }
-                else {
+                else
+                {
                     GetClipmapUV(uv, depth);
                     return _ClipmapStack.SampleLevel(sampler_ClipmapStack, float3(uv, depth), 0);
                 }
             }
 
             // ========== Shader Stage =============================================================================
-            v2f vert (appdata v)
+            v2f vert(appdata v)
             {
                 v2f o;
                 o.pos = TransformObjectToHClip(v.vPos);
@@ -142,21 +148,25 @@ Shader "Unlit/ClipmapSurface"
                 return o;
             }
 
-            float4 frag (v2f i) : SV_Target
+            float4 frag(v2f i) : SV_Target
             {
                 float4 retCol;
-                int mipLevelCoarse = 0;                                
+                int mipLevelCoarse = 0;
                 int mipLevelFine = 0;
                 float mipFract = 0;
                 GetClipmapStackLevels(i.uv, mipLevelCoarse, mipLevelFine, mipFract);
 
                 float4 col1 = SampleClipmap(i.uv, mipLevelFine);
                 float4 col2 = SampleClipmap(i.uv, mipLevelCoarse);
-                
+
                 retCol = lerp(col1, col2, mipFract);
 
-                float3 transitionRegionOverlayColors[8] = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,0}, {1,0,0}, {0,1,0}, {0,0,1}, {1,1,1}};
-                retCol = lerp(retCol, float4(transitionRegionOverlayColors[mipLevelFine].rgb * _EnableTransitionRegionOverlay, 1), mipFract * _EnableTransitionRegionOverlay);
+                float3 transitionRegionOverlayColors[8] = {
+                    {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 1}
+                };
+                retCol = lerp(
+                    retCol, float4(transitionRegionOverlayColors[mipLevelFine].rgb * _EnableTransitionRegionOverlay, 1),
+                    mipFract * _EnableTransitionRegionOverlay);
                 // retCol = float4(transitionRegionOverlayColors[mipLevelFine], 1);
                 return retCol;
             }

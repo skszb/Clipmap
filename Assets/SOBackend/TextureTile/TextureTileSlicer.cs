@@ -1,87 +1,68 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Mathematics;
 using UnityEditor;
-using UnityEditor.Profiling.Memory.Experimental;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "TextureTileSlicer", menuName = "ScriptableObjects/TextureTile/TextureTileSlicer")]
 public class TextureTileSlicer : ScriptableObject
 {
+    private const string folderName = "TextureTileCache";
+    private const string folderFullPath = "Assets/Resources/Cache/" + folderName;
     public int tileSize = 64;
     public Texture2D[] textures;
 
-    private const string folderName = "TextureTileCache";
-    private const string folderFullPath = "Assets/Resources/Cache/" + folderName;
-
-    void ClearTileData()
+    private void ClearTileData()
     {
-        if (Directory.Exists(folderFullPath))
-        {
-            AssetDatabase.DeleteAsset(folderFullPath);
-        }
+        if (Directory.Exists(folderFullPath)) AssetDatabase.DeleteAsset(folderFullPath);
         AssetDatabase.CreateFolder("Assets/Resources/Cache", folderName);
     }
 
-    unsafe void GenerateTileData()
+    private unsafe void GenerateTileData()
     {
-       
-        for (int textureID = 0; textureID < textures.Length; ++textureID)
+        for (var textureID = 0; textureID < textures.Length; ++textureID)
         {
-            Texture2D currentTexture = textures[textureID];
-            if (currentTexture is null)
-            {
-                continue;
-            }
+            var currentTexture = textures[textureID];
+            if (currentTexture is null) continue;
 
-            int vertexSize = GetVertexSizeInBytes(currentTexture);
+            var vertexSize = GetVertexSizeInBytes(currentTexture);
             if (vertexSize == -1)
             {
                 Debug.LogWarning(string.Format("Failed to slice texture{0}.", textureID));
                 continue;
             }
-            int tileBufferSize = tileSize * tileSize * vertexSize;
+
+            var tileBufferSize = tileSize * tileSize * vertexSize;
 
             // Acquire base texture data for processing
-            NativeArray<byte> texData = currentTexture.GetPixelData<byte>(0);
+            var texData = currentTexture.GetPixelData<byte>(0);
 
             // Create a folder for caching the current texture tiles
             AssetDatabase.CreateFolder(folderFullPath, textureID.ToString());
-            string currentFolderPath = Path.Combine(folderFullPath, textureID.ToString());
+            var currentFolderPath = Path.Combine(folderFullPath, textureID.ToString());
 
             // Get tile data and save in the folder
-            int textureSize = textures[textureID].width;
-            int tileCount = textureSize / tileSize;
-            NativeArray<byte> intermediateBuffer = new NativeArray<byte>(tileBufferSize, Allocator.Temp);
-            for (int u = 0; u < tileCount; ++u)
+            var textureSize = textures[textureID].width;
+            var tileCount = textureSize / tileSize;
+            var intermediateBuffer = new NativeArray<byte>(tileBufferSize, Allocator.Temp);
+            for (var u = 0; u < tileCount; ++u)
+            for (var v = 0; v < tileCount; ++v)
             {
-                for (int v = 0; v < tileCount; ++v)
-                {
-                    int sourceOffset = (u * textureSize + v) * tileSize * vertexSize;
-                    UnsafeUtility.MemCpyStride(intermediateBuffer.GetUnsafePtr(), 
-                                                tileSize * vertexSize, 
-                                                (byte*)texData.GetUnsafePtr() + sourceOffset, 
-                                                textureSize * vertexSize, 
-                                                tileSize * vertexSize, 
-                                                tileSize);
-                    
-                    // TextureTile tile = ScriptableObject.CreateInstance<TextureTile>();
-                    // tile.rawData = new byte[tileBufferSize];
-                    // intermediateBuffer.CopyTo(tile.rawData);
-                    //
-                    // string assetPath = Path.Combine(currentFolderPath, String.Format("{0}_{1}.asset", u, v));
-                    // AssetDatabase.CreateAsset(tile, assetPath);
-                    Texture2D tex = new Texture2D(tileSize, tileSize, TextureFormat.RGBA32, false);
-                    tex.SetPixelData(intermediateBuffer, 0);
-                    string assetPath = Path.Combine(currentFolderPath, String.Format("{0}_{1}.asset", u, v));
-                    AssetDatabase.CreateAsset(tex, assetPath);
-                }
+                var sourceOffset = (u * textureSize + v) * tileSize * vertexSize;
+                UnsafeUtility.MemCpyStride(intermediateBuffer.GetUnsafePtr(),
+                    tileSize * vertexSize,
+                    (byte*)texData.GetUnsafePtr() + sourceOffset,
+                    textureSize * vertexSize,
+                    tileSize * vertexSize,
+                    tileSize);
+
+                var tex = new Texture2D(tileSize, tileSize, TextureFormat.RGBA32, false);
+                tex.SetPixelData(intermediateBuffer, 0);
+                var assetPath = Path.Combine(currentFolderPath, string.Format("{0}_{1}.asset", u, v));
+                AssetDatabase.CreateAsset(tex, assetPath);
             }
         }
+
         Debug.Log("Created Sliced Texture Tiles");
     }
 
@@ -92,19 +73,20 @@ public class TextureTileSlicer : ScriptableObject
     }
 
     // return the size in bytes of a pixel in the given texture
-    int GetVertexSizeInBytes(Texture2D tex)
+    private int GetVertexSizeInBytes(Texture2D tex)
     {
-        int vertexSize = -1;
-        switch (tex.format) 
+        var vertexSize = -1;
+        switch (tex.format)
         {
             case TextureFormat.RGBA32:
-                vertexSize = 4; 
+                vertexSize = 4;
                 break;
             default:
                 Debug.LogWarning("Fail to slice texture: format not yet supported.");
-                vertexSize = - 1;
+                vertexSize = -1;
                 break;
         }
+
         return vertexSize;
     }
 }

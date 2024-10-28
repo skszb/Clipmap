@@ -10,7 +10,7 @@ Shader "Examples/ShaderSyntax"
 
         Pass
         {
-           // The code that defines the Pass goes here
+            // The code that defines the Pass goes here
         }
     }
 

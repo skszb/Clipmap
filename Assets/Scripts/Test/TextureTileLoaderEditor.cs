@@ -1,8 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using UnityEditor;
-
+using UnityEngine;
 
 [CustomEditor(typeof(TextureTileLoader))]
 public class TextureTileLoaderEditor : Editor
@@ -11,11 +8,8 @@ public class TextureTileLoaderEditor : Editor
     {
         base.OnInspectorGUI();
 
-        TextureTileLoader script = (TextureTileLoader)target;
+        var script = (TextureTileLoader)target;
 
-        if (GUILayout.Button("Load Tile Data", GUILayout.Height(40)))
-        {
-            script.LoadTextures();
-        }
+        if (GUILayout.Button("Load Tile Data", GUILayout.Height(40))) script.LoadTextures();
     }
 }

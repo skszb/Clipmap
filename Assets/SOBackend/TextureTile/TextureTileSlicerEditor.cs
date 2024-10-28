@@ -1,8 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using UnityEditor;
-
+using UnityEngine;
 
 [CustomEditor(typeof(TextureTileSlicer))]
 public class TextureTileSlicerEditor : Editor
@@ -11,7 +8,7 @@ public class TextureTileSlicerEditor : Editor
     {
         base.OnInspectorGUI();
 
-        TextureTileSlicer script = (TextureTileSlicer)target;
+        var script = (TextureTileSlicer)target;
 
         if (GUILayout.Button("Regenerate Tile Data", GUILayout.Height(40)))
         {
