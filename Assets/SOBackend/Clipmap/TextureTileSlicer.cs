@@ -46,20 +46,22 @@ public class TextureTileSlicer : ScriptableObject
             var tileCount = textureSize / tileSize;
             var intermediateBuffer = new NativeArray<byte>(tileBufferSize, Allocator.Temp);
             for (var u = 0; u < tileCount; ++u)
-            for (var v = 0; v < tileCount; ++v)
             {
-                var sourceOffset = (u * textureSize + v) * tileSize * vertexSize;
-                UnsafeUtility.MemCpyStride(intermediateBuffer.GetUnsafePtr(),
-                    tileSize * vertexSize,
-                    (byte*)texData.GetUnsafePtr() + sourceOffset,
-                    textureSize * vertexSize,
-                    tileSize * vertexSize,
-                    tileSize);
+                for (var v = 0; v < tileCount; ++v)
+                {
+                    var sourceOffset = (u * textureSize + v) * tileSize * vertexSize;
+                    UnsafeUtility.MemCpyStride(intermediateBuffer.GetUnsafePtr(),
+                        tileSize * vertexSize,
+                        (byte*)texData.GetUnsafePtr() + sourceOffset,
+                        textureSize * vertexSize,
+                        tileSize * vertexSize,
+                        tileSize);
 
-                var tex = new Texture2D(tileSize, tileSize, TextureFormat.RGBA32, false);
-                tex.SetPixelData(intermediateBuffer, 0);
-                var assetPath = Path.Combine(currentFolderPath, string.Format("{0}_{1}.asset", u, v));
-                AssetDatabase.CreateAsset(tex, assetPath);
+                    var tex = new Texture2D(tileSize, tileSize, TextureFormat.RGBA32, false);
+                    tex.SetPixelData(intermediateBuffer, 0);
+                    var assetPath = Path.Combine(currentFolderPath, string.Format("{0}_{1}.asset", u, v));
+                    AssetDatabase.CreateAsset(tex, assetPath);
+                }
             }
         }
 

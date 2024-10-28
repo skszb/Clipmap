@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 [CreateAssetMenu(fileName = "ClipmapConfiguration", menuName = "ScriptableObjects/Clipmap/ClipmapConfiguration")]
@@ -11,4 +12,5 @@ public class ClipmapConfiguration : ScriptableObject
     public TextureFormat TextureFormat;
 
     public Texture2D[] BaseTexture;
+    
 }
