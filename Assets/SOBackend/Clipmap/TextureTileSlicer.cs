@@ -42,14 +42,14 @@ public class TextureTileSlicer : ScriptableObject
             var currentFolderPath = Path.Combine(folderFullPath, textureID.ToString());
 
             // Get tile data and save in the folder
-            var textureSize = textures[textureID].width;
-            var tileCount = textureSize / tileSize;
+            int textureSize = textures[textureID].width;
+            int tileCount = textureSize / tileSize;
             var intermediateBuffer = new NativeArray<byte>(tileBufferSize, Allocator.Temp);
-            for (var u = 0; u < tileCount; ++u)
+            for (int u = 0; u < textureSize; u += tileSize)
             {
-                for (var v = 0; v < tileCount; ++v)
+                for (int v = 0; v < textureSize; v += tileSize)
                 {
-                    var sourceOffset = (u * textureSize + v) * tileSize * vertexSize;
+                    var sourceOffset = (v * textureSize + u) * vertexSize;
                     UnsafeUtility.MemCpyStride(intermediateBuffer.GetUnsafePtr(),
                         tileSize * vertexSize,
                         (byte*)texData.GetUnsafePtr() + sourceOffset,
