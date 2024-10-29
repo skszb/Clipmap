@@ -9,7 +9,7 @@ public class TextureTileSlicer : ScriptableObject
 {
     private const string folderName = "TextureTileCache";
     private const string folderFullPath = "Assets/Resources/Cache/" + folderName;
-    public int tileSize = 64;
+    public int tileSize = 64;   // TODO: to variable tile size for each depth
     public Texture2D[] textures;
 
     private void ClearTileData()

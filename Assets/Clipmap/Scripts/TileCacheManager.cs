@@ -116,15 +116,17 @@ public class TileCacheManager
     
 
 
-    public void Initialize(MonoBehaviour owner, int tileSize, int depth)
+    public void Initialize(MonoBehaviour owner, int[] baseTextureSize, int[] tileSize, string[] folderName)
     {
+        int depth = folderName.Length;
         m_tileCache = new List<TileCache>(depth);
         for (var i = 0; i < depth; ++i)
         {
-            m_tileCache.Add(new TileCache(owner, tileSize, tileSize, m_path + "/" + i.ToString()));
+            m_tileCache.Add(new TileCache(owner, tileSize[i], tileSize[i], m_path + "/" + folderName[i]));
         }
     }
     
+    // Return the texture tiles that the given region lies within. If a tile isn't cached yet, it will be null
     public List<(Texture2D tile, AABB2Int tileBound, AABB2Int updateRegion)> GetTiles(AABB2Int updateRegion, int depth)
     {
         var ret = new List<(Texture2D tile, AABB2Int tileBound, AABB2Int updateRegion)>();
@@ -148,11 +150,7 @@ public class TileCacheManager
         foreach (var key in keys)
         {
             Texture2D tile = tileCache.GetTexture(key);
-            if (tile is null)
-            {
-                continue;
-            }
-
+            
             AABB2Int tileBound = new AABB2Int(key.x, key.y, key.x + tileSize, key.y + tileSize);
             ret.Add((tile, tileBound, updateRegion.Clamp(tileBound)));
         }

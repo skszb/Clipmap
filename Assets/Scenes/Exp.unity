@@ -340,7 +340,7 @@ Transform:
   m_GameObject: {fileID: 378413733}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.000000005901705, y: 4.469314e-12, z: -0.0000000033057688}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -358,7 +358,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 849ee3c570841894f936505e0a7cff2e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tileCacheManager: {fileID: 0}
   load: 0
   depth: 0
   bottomLeft: {x: 0, y: 0}

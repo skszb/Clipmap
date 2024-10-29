@@ -43,8 +43,9 @@ Shader "Unlit/ClipmapSurface"
                 int _ClipSize;
                 int _ClipHalfSize;
                 int _ClipmapStackLevelCount;
+                int _MaxTextureLOD;
 
-                float2 _ClipmapCenter[CLIPMAP_MAX_SIZE];
+                float2 _ClipCenter[CLIPMAP_MAX_SIZE];
                 float _MipSize[CLIPMAP_MAX_SIZE];
                 float _MipHalfSize[CLIPMAP_MAX_SIZE];
                 float _ClipScaleToMip[CLIPMAP_MAX_SIZE];
@@ -52,14 +53,7 @@ Shader "Unlit/ClipmapSurface"
 
             CBUFFER_END
 
-            SamplerState sampler_ClipmapStack
-            {
-                MinLOD = 0;
-                MaxLOD = 0;
-                BorderColor = {1, 1, 1, 1};
-                AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
-                AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
-            };
+            SamplerState sampler_ClipmapStack;
 
             struct appdata
             {
@@ -86,9 +80,9 @@ Shader "Unlit/ClipmapSurface"
                 // mip calculation by world space
                 float2 homogeneousCoord = (uv - 0.5) * _MipSize[0];
                 int clipmapLevelincludeCount = 0;
-                for (int levelIndex = 0; levelIndex < _ClipmapStackLevelCount; ++levelIndex)
+                for (int levelIndex = _MaxTextureLOD; levelIndex < _ClipmapStackLevelCount; ++levelIndex)
                 {
-                    float2 diff = homogeneousCoord - (_ClipmapCenter[levelIndex]) * _MipScaleToWorld[levelIndex];
+                    float2 diff = homogeneousCoord - _ClipCenter[levelIndex] * _MipScaleToWorld[levelIndex];
                     float2 sqrDiff = diff * diff;
 
                     float2 sqrHalfSize = pow((_ClipHalfSize) * _MipScaleToWorld[levelIndex], 2);
@@ -115,7 +109,7 @@ Shader "Unlit/ClipmapSurface"
                 // Blending algorithm from: https://hhoppe.com/proj/geomclipmap/
                 // To be optimized VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV 
                 float w = 0.1;
-                float2 diff = homogeneousCoord - (_ClipmapCenter[fineLevelIndex]) * _MipScaleToWorld[fineLevelIndex];
+                float2 diff = homogeneousCoord - (_ClipCenter[fineLevelIndex]) * _MipScaleToWorld[fineLevelIndex];
                 float2 halfSize = _ClipHalfSize * _MipScaleToWorld[fineLevelIndex];
                 float2 proportion = (abs(diff) + 1) / halfSize;
                 proportion = (proportion - (1 - w)) / w;
