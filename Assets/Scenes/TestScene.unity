@@ -1258,6 +1258,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_clipmapConfiguration: {fileID: 11400000, guid: 82c3c3c10a3c16c40a9013d153350264,
     type: 2}
+  m_maxTextureLOD: 0
 --- !u!154 &1352345657
 TerrainCollider:
   m_ObjectHideFlags: 0
