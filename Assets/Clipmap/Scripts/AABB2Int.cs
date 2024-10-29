@@ -86,10 +86,17 @@ public struct AABB2Int
                      min.y <= point.y && point.y <= max.y;
         return result;
     }
-
-    public AABB2Int Clamp(AABB2Int box)
+    
+    // Clamp this AABB to within the given AABB box
+    public AABB2Int ClampBy(AABB2Int box)
     {
         return new AABB2Int(Math.Max(box.min.x, min.x), Math.Max(box.min.y, min.y),
             Math.Min(box.max.x, max.x), Math.Min(box.max.y, max.y));
+    }
+
+    // Clamp the coordinate of given vector to within this AABB
+    public Vector2Int ClampVec2Int(Vector2Int vector)
+    {
+        return new Vector2Int(Math.Clamp(vector.x, min.x, max.x), Math.Clamp(vector.y, min.y, max.y));
     }
 }

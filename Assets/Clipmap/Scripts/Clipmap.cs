@@ -148,30 +148,37 @@ public class Clipmap : MonoBehaviour
         Vector2 centerInWorldSpace = new Vector2(cameraPositionInWorldSpace.x, cameraPositionInWorldSpace.z);
         float height = cameraPositionInWorldSpace.y;
 
-        Vector2 centerInHomogeneousSpace = centerInWorldSpace;
-        Vector2 centerInMipSpace = centerInHomogeneousSpace;
-        for (int clipmapStackLevelIndex = 0;
-             clipmapStackLevelIndex < m_clipmapStackLevelCount;
-             clipmapStackLevelIndex++, centerInMipSpace /= 2)
+        Vector2 centerInMipSpace = centerInWorldSpace;
+        Vector2Int[] updatedClipCenters = new Vector2Int[m_clipmapStackLevelCount];
+        var updateRegions = new List<List<(Texture2D tile, AABB2Int tileBound, AABB2Int updateRegion)>>(m_clipmapStackLevelCount);
+        for (int depth = 0; depth < m_clipmapStackLevelCount;  depth++, centerInMipSpace /= 2)
         {
             // The coordinate of snapped center is floored, so we added a positive bias of half grid size to the player's position 
             // this ensures that the boundary that triggers clipmap update is [-0.5, 0.5) around the center instead of [0, 1);
             Vector2 biasedPosition = centerInMipSpace + m_updateGridSize * new Vector2(0.5f, 0.5f);
+            
+            AABB2Int clipmapCenterSafeRegion = m_clipmapCenterSafeRegion[depth];
             Vector2Int updatedClipCenter = GetSnappedCenter(biasedPosition, m_updateGridSize);
-
-            AABB2Int clipmapCenterSafeRegion = m_clipmapCenterSafeRegion[clipmapStackLevelIndex];
-            updatedClipCenter.x = Math.Clamp(updatedClipCenter.x, clipmapCenterSafeRegion.min.x, clipmapCenterSafeRegion.max.x);
-            updatedClipCenter.y = Math.Clamp(updatedClipCenter.y, clipmapCenterSafeRegion.min.y, clipmapCenterSafeRegion.max.y);
-
-            List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_clipCenter[clipmapStackLevelIndex], updatedClipCenter, m_clipSize);
-
+            updatedClipCenter = clipmapCenterSafeRegion.ClampVec2Int(updatedClipCenter);
+            updatedClipCenters[depth] = updatedClipCenter;
+            
             // We are updating from the level of highest precision, so we can safely skip the rest if current one doesn't need update
+            List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_clipCenter[depth], updatedClipCenter, m_clipSize);
             if (!regionsToUpdate.Any()) break;
             
             // 1. split regions in mip tile cache
+            foreach (AABB2Int region in regionsToUpdate)
+            {
+                updateRegions[depth] = m_tileCacheManager.GetTiles(region, depth);
+            }
+        }
+
+        for (int depth = m_clipmapStackLevelCount - 1; depth >= 0; depth--)
+        {
+            Vector2Int updatedClipCenter = updatedClipCenters[depth];
             // 2. further divide into clip tile
-            // 3. copytexture
             
+            // 3. copytexture
             Vector2Int clipmapBottomLeftCorner = updatedClipCenter - new Vector2Int(m_clipHalfSize, m_clipHalfSize);
             clipmapBottomLeftCorner = m_clipSize * ClipmapUtil.FloorDivision(clipmapBottomLeftCorner, m_clipSize);
 
@@ -185,27 +192,27 @@ public class Clipmap : MonoBehaviour
                 bottomLeftTile + m_clipSize
             };
 
-            int mipHalfSize = m_mipHalfSize[clipmapStackLevelIndex];
+            int mipHalfSize = m_mipHalfSize[depth];
             foreach (AABB2Int tile in tilesToUpdate)
             {
                 foreach (AABB2Int updateRegion in regionsToUpdate)
                 {
-                    AABB2Int updateRegionInTile = updateRegion.Clamp(tile);
+                    AABB2Int updateRegionInTile = updateRegion.ClampBy(tile);
                     if (updateRegionInTile.IsValid())
                     {
                         int srcX = updateRegionInTile.min.x + mipHalfSize;
                         int srcY = updateRegionInTile.min.y + mipHalfSize;
                         int dstX = updateRegionInTile.min.x - tile.min.x;
                         int dstY = updateRegionInTile.min.y - tile.min.y;
-                        Graphics.CopyTexture(m_clipmapStackCache[clipmapStackLevelIndex], 0, 0, srcX, srcY,
+                        Graphics.CopyTexture(m_clipmapStackCache[depth], 0, 0, srcX, srcY,
                             updateRegionInTile.Width(), updateRegionInTile.Height(),
-                            ClipmapStack, clipmapStackLevelIndex, 0, dstX, dstY);
+                            ClipmapStack, depth, 0, dstX, dstY);
                     }
                 }
             }
-            m_clipCenter[clipmapStackLevelIndex] = updatedClipCenter;
-            m_clipCenterFloat[clipmapStackLevelIndex].x = updatedClipCenter.x;
-            m_clipCenterFloat[clipmapStackLevelIndex].y = updatedClipCenter.y;
+            m_clipCenter[depth] = updatedClipCenter;
+            m_clipCenterFloat[depth].x = updatedClipCenter.x;
+            m_clipCenterFloat[depth].y = updatedClipCenter.y;
         }
 
         PassDynamicUniforms();

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 internal class ClipmapUtil
@@ -11,13 +12,5 @@ internal class ClipmapUtil
     {
         return new Vector2Int(FloorDivision(vec.x, num), FloorDivision(vec.y, num));
     }
-
-    public class UpdateRegion
-    {
-        public AABB2Int ClipmapBound;
-        public AABB2Int SrcBound;
-
-        public Texture2D SrcTexture;
-        public AABB2Int UpdateRegionBound;
-    }
+    
 }

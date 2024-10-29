@@ -152,7 +152,7 @@ public class TileCacheManager
             Texture2D tile = tileCache.GetTexture(key);
             
             AABB2Int tileBound = new AABB2Int(key.x, key.y, key.x + tileSize, key.y + tileSize);
-            ret.Add((tile, tileBound, updateRegion.Clamp(tileBound)));
+            ret.Add((tile, tileBound, updateRegion.ClampBy(tileBound)));
         }
 
         return ret;
