@@ -16,6 +16,7 @@ public class FlyCamera : MonoBehaviour
 
 
     public float mainSpeed = 100.0f; //regular speed
+    public float maxSpeed = 200.0f;
     public float camSens = 1; //How sensitive it with mouse
 
     public bool pause;
@@ -57,7 +58,7 @@ public class FlyCamera : MonoBehaviour
 
         p = p * Time.deltaTime;
         var newPosition = transform.position;
-        transform.Translate(p * mainSpeed);
+        transform.Translate(p);
     }
 
 
@@ -71,7 +72,8 @@ public class FlyCamera : MonoBehaviour
         if (Input.GetKey(KeyCode.D)) p_Velocity += new Vector3(1, 0, 0);
         if (Input.GetKey(KeyCode.E)) p_Velocity += new Vector3(0, 0.5f, 0);
         if (Input.GetKey(KeyCode.Q)) p_Velocity += new Vector3(0, -0.5f, 0);
-        if (Input.GetKey(KeyCode.LeftShift)) p_Velocity *= 2;
+        if (Input.GetKey(KeyCode.LeftShift)) p_Velocity *= maxSpeed;
+        else p_Velocity *= mainSpeed;
         return p_Velocity;
     }
 }

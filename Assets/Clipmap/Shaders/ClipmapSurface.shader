@@ -67,7 +67,7 @@ Shader "Unlit/ClipmapSurface"
                 float2 uv : TEXCOORD0;
             };
 
-            // ========== Helper Function =============================================================================
+            // ========== Helper Functions =============================================================================
             // transform the uv in mip0 to the toroidal uv in the clipmap stack 
             void GetClipmapUV(inout float2 uv, in int clipmapStackLevel)
             {
@@ -101,7 +101,8 @@ Shader "Unlit/ClipmapSurface"
                 float mipLevelScreenSpace = 0.5 * log2(maxSqrPixelDiff);
                 int mipLevelScreenSpaceFine = floor(mipLevelScreenSpace);
                 float mipLevelScreenSpaceFract = frac(mipLevelScreenSpace);
-
+                
+                
                 // combine world space and screen space
                 fineLevelIndex = min(max(fineLevelIndex, mipLevelScreenSpaceFine), _ClipmapStackLevelCount);
                 coarseLevelIndex = fineLevelIndex + 1;

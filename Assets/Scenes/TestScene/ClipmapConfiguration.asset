@@ -12,19 +12,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b5bd9e1cfc841e4eabc7c6f2d388ec1, type: 3}
   m_Name: ClipmapConfiguration
   m_EditorClassIdentifier: 
-  WorldScale: 1
-  ClipSize: 256
+  ClipSize: 512
   InvalidBorder: 32
-  ClipmapUpdateGridSize: 32
+  ClipmapUpdateGridSize: 16
   TextureFormat: 4
   BaseTexture:
+  - {fileID: 2800000, guid: d0a971ae4a441784da84136674c517aa, type: 3}
   - {fileID: 2800000, guid: 0fb93ea1fb3424846928d5eab39e5483, type: 3}
   - {fileID: 2800000, guid: 293588df7bae1e3458e74968b5670a5f, type: 3}
   - {fileID: 2800000, guid: b190585c209dc1b4daadf10004d9df8b, type: 3}
-  - {fileID: 2800000, guid: 5f55ebb02d83069449815fe3ffd4a7b2, type: 3}
   folderName:
   - 0
   - 1
   - 2
-  baseTextureSize: 000800000004000000020000
+  baseTextureSize: 001000000008000000040000
   tileSize: 800000008000000080000000

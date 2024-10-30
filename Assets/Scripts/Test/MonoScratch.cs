@@ -32,7 +32,7 @@ public class MonoScratch : MonoBehaviour
         LoadedTextures = new List<Texture2D>(result.Count);
         foreach (var tile in result)
         {
-            LoadedTextures.Add(tile.tile);
+            LoadedTextures.Add(tile.textureTile);
         }
     }
 }

@@ -58,8 +58,7 @@ public class Clipmap : MonoBehaviour
 
     /* -------- Only sync when initialize -------- */
 
-
-
+    
     // The number of texels in one dimension from both ends, used to determine whether to wait for mipTexture update
     private int m_invalidBorder; // TODO: Update every frame: https://notkyon.moe/vt/Clipmap.pdf
 
@@ -105,6 +104,7 @@ public class Clipmap : MonoBehaviour
         UpdateCurrentCenters(centerInWorldSpace);
 
         m_maxTextureLOD = 0;
+        
         for (int depth = 0; depth < m_clipmapStackLevelCount;  depth++)
         {
             Vector2Int updatedClipCenter = m_clipCenters[depth];
@@ -113,19 +113,18 @@ public class Clipmap : MonoBehaviour
             List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_latestValidClipCenters[depth], m_clipCenters[depth], m_clipSize);
             if (!regionsToUpdate.Any()) break;
             
-            // 1. split regions in mip tile cache
-            var regionPairsToUpdate = new  List<(Texture2D tile, AABB2Int tileBound, AABB2Int updateRegion)>();
+            // 1. get cached texture tiles where the need-to-update regions lie within 
+            var regionPairsToUpdate = new  List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)>();
             foreach (AABB2Int region in regionsToUpdate)
             {
                 regionPairsToUpdate.AddRange(m_tileCacheManager.GetTiles(region, depth));
             }
             
-            // 2. further divide into clip tile
+            // 2. further divide into target regions
             Vector2Int clipmapBottomLeftCorner = m_clipCenters[depth] - new Vector2Int(m_clipHalfSize, m_clipHalfSize);
             clipmapBottomLeftCorner = ClipmapUtil.SnapToGrid(clipmapBottomLeftCorner, m_clipSize);
 
             AABB2Int bottomLeftTile = new AABB2Int(clipmapBottomLeftCorner, clipmapBottomLeftCorner + new Vector2Int(m_clipSize, m_clipSize));
-
             List<AABB2Int> tilesToUpdate = new List<AABB2Int>
             {
                 bottomLeftTile,
@@ -140,43 +139,35 @@ public class Clipmap : MonoBehaviour
             {
                 foreach (var regionPair in regionPairsToUpdate)
                 {
-                    if (regionPair.tile is null)
+                    if (regionPair.textureTile is null)
                     {
                         copyIncomplete = 1;
-                        Debug.Log("nu   ");
+                        m_tileCacheManager.LoadTiles(regionPair.tileBound, depth); // TODO: replace this with look ahead cache
                         continue;
                     }
                     
-                    AABB2Int regionInBothTiles = regionPair.updateRegion.ClampBy(tile);
+                    AABB2Int regionInBothTiles = regionPair.croppedUpdateRegion.ClampBy(tile);
                     if (regionInBothTiles.IsValid())
                     {
                         int srcX = regionInBothTiles.min.x - regionPair.tileBound.min.x;
                         int srcY = regionInBothTiles.min.y - regionPair.tileBound.min.y;
                         int dstX = regionInBothTiles.min.x - tile.min.x;
                         int dstY = regionInBothTiles.min.y - tile.min.y;
-                        Graphics.CopyTexture(regionPair.tile, 0, 0, srcX, srcY,
+                        Graphics.CopyTexture(regionPair.textureTile, 0, 0, srcX, srcY,
                             regionInBothTiles.Width(), regionInBothTiles.Height(),
                             ClipmapStack, depth, 0, dstX, dstY);
                     }
                 }
-                // foreach (AABB2Int updateRegion in regionsToUpdate)
-                // {
-                //     AABB2Int updateRegionInTile = updateRegion.ClampBy(tile);
-                //     if (updateRegionInTile.IsValid())
-                //     {
-                //         int srcX = updateRegionInTile.min.x + mipHalfSize;
-                //         int srcY = updateRegionInTile.min.y + mipHalfSize;
-                //         int dstX = updateRegionInTile.min.x - tile.min.x;
-                //         int dstY = updateRegionInTile.min.y - tile.min.y;
-                //         Graphics.CopyTexture(m_clipmapStackCache[depth], 0, 0, srcX, srcY,
-                //             updateRegionInTile.Width(), updateRegionInTile.Height(),
-                //             ClipmapStack, depth, 0, dstX, dstY);
-                //     }
-                // }
             }
-            m_latestValidClipCenters[depth] = updatedClipCenter;
-            m_clipCentersFloat[depth].x = updatedClipCenter.x;
-            m_clipCentersFloat[depth].y = updatedClipCenter.y;
+            m_maxTextureLOD += copyIncomplete;
+            
+            if (copyIncomplete == 0)
+            {
+                m_latestValidClipCenters[depth] = updatedClipCenter;
+                m_clipCentersFloat[depth].x = updatedClipCenter.x;
+                m_clipCentersFloat[depth].y = updatedClipCenter.y;
+            }
+            
         }
 
         PassDynamicUniforms();
@@ -258,7 +249,7 @@ public class Clipmap : MonoBehaviour
             Graphics.CopyTexture(mipmapLevelDiskData, 0, 0, 0, 0, clipmapLevelCache.width, clipmapLevelCache.height,
                 clipmapLevelCache, 0, 0, 0, 0);
             // Revised Version TODO: replace code above
-            m_tileCacheManager.LoadTiles(new AABB2Int(0, 0, mipSize,  mipSize), depth);
+            // m_tileCacheManager.LoadTiles(new AABB2Int(0, 0, mipSize,  mipSize) - mipSize / 2, depth);
 
             // Initialize clipmap stack levels
             // Set clipmap centers outside the mip area so that their textures will be automatically loaded in the first update
