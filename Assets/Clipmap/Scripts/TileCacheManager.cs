@@ -1,12 +1,6 @@
-#define SAFETY_CHECK
-
-using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
-using UnityEditor.Experimental.GraphView;
+
 using UnityEngine;
 
 public class TileCacheManager
@@ -22,8 +16,7 @@ public class TileCacheManager
     private List<TileCache> m_tileCache;
 
     private string m_path = "Cache/TextureTileCache";
-
-
+    
     public void Initialize(MonoBehaviour owner, int[] baseTextureSize, int[] tileSize, string[] folderName)
     {
         int depth = folderName.Length;
@@ -73,8 +66,7 @@ public class TileCacheManager
         // convert to texel space
         updateRegion += textureSize / 2;
         updateRegion.ClampBy(new AABB2Int(0, 0, textureSize, textureSize));
-
-
+        
         var bottomLeft = ClipmapUtil.SnapToGrid(updateRegion.min, tileSize);
 
         for (var coord = bottomLeft; coord.x < updateRegion.max.x; coord.x += tileSize)
@@ -117,7 +109,6 @@ public class TileCacheManager
 
         private int GetAvailableSlot()
         {
-            
             LoadingStatus.Add(CacheStatus.Missing);
             TextureTiles.Add(null);
             return m_availableIndex++;
@@ -132,16 +123,13 @@ public class TileCacheManager
 
         public Texture2D TryAcquireTile(Vector2Int tileCoordinates)
         {
-            if (cacheLookupTable.ContainsKey(tileCoordinates))
+            if (cacheLookupTable.TryGetValue(tileCoordinates, out int index))
             {
-                int index = cacheLookupTable[tileCoordinates];
-                CacheStatus status = LoadingStatus[index];
-                if (status == CacheStatus.Ready)
+                if (LoadingStatus[index] == CacheStatus.Ready)
                 {
                     return TextureTiles[index];
                 }
             }
-
             return null;
         }
 
@@ -182,15 +170,14 @@ public class TileCacheManager
                     break;
             }
         }
-
-
-        IEnumerator LoadTileAsync(int index, string path, int priority = 0)
+        
+        private IEnumerator LoadTileAsync(int index, string path, int priority = 0)
         {
             LoadingStatus[index] = CacheStatus.Loading;
             ResourceRequest request = Resources.LoadAsync<Texture2D>(path);
             request.priority = priority;
             yield return request;
-
+            
             var tex = request.asset as Texture2D;
             if (tex is not null)
             {
@@ -201,10 +188,8 @@ public class TileCacheManager
             {
                 LoadingStatus[index] = CacheStatus.Failed;
             }
+            
+            // yield break to stop
         }
     }
-    
-    
-   
-    
 }
