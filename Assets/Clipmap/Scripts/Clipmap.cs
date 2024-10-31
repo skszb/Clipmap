@@ -225,7 +225,7 @@ public class Clipmap : MonoBehaviour
 
         m_tileCacheManager = new TileCacheManager();
         m_tileCacheManager.Initialize(this, m_clipmapConfiguration.baseTextureSize, 
-            m_clipmapConfiguration.tileSize, m_clipmapConfiguration.folderName);
+            m_clipmapConfiguration.tileSize, m_clipmapConfiguration.folderName, m_clipmapConfiguration.capacity);
         
         ClipmapStack = new Texture2DArray(m_clipSize, m_clipSize, m_clipmapStackLevelCount, m_mipTextureFormat, false,
             false, true);

@@ -18,4 +18,5 @@ public class ClipmapConfiguration : ScriptableObject
     public string[] folderName;
     public int[] baseTextureSize;
     public int[] tileSize;
+    public int[] capacity;
 }
