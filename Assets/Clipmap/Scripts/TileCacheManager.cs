@@ -12,6 +12,7 @@ using Object = UnityEngine.Object;
 
 public class TileCacheManager
 {
+    
     private List<TileCache> m_tileCaches;
     private List<int> m_baseTextureSizes;
     private List<int> m_tileSizes;
@@ -50,11 +51,11 @@ public class TileCacheManager
 
         for (var coord = bottomLeft; coord.x < updateRegion.max.x; coord.x += tileSize)
         {
-            for (coord.y = 0; coord.y < updateRegion.max.y; coord.y += tileSize)
+            for (coord.y = bottomLeft.y; coord.y < updateRegion.max.y; coord.y += tileSize)
             {
                 Texture2D tile = tileCache.TryAcquireTile(coord);
                 AABB2Int tileBound = new AABB2Int(coord.x, coord.y, coord.x + tileSize, coord.y + tileSize);
-                AABB2Int croppedUpdateRegion = updateRegion.ClampBy(tileBound);
+                AABB2Int croppedUpdateRegion = updateRegion.Clamp(tileBound);
                 if (!croppedUpdateRegion.IsValid())
                 {
                     continue;
@@ -76,19 +77,19 @@ public class TileCacheManager
 
         // convert to texel space
         updateRegion += textureSize / 2;
-        updateRegion.ClampBy(new AABB2Int(0, 0, textureSize, textureSize));
+        updateRegion.Clamp(new AABB2Int(0, 0, textureSize, textureSize));
 
         var bottomLeft = ClipmapUtil.SnapToGrid(updateRegion.min, tileSize);
 
         for (var coord = bottomLeft; coord.x < updateRegion.max.x; coord.x += tileSize)
         {
-            for (coord.y = 0; coord.y < updateRegion.max.y; coord.y += tileSize)
+            for (coord.y = bottomLeft.y; coord.y < updateRegion.max.y; coord.y += tileSize)
             {
                 tileCache.LoadTile(coord, -depth);
             }
         }
     }
-
+    
     internal class TileCache
     {
         private int m_capacity;
@@ -97,7 +98,7 @@ public class TileCacheManager
 
         // Bidirectional map <Tile coordinates, LRUCacheInfo id>, for tiles already cached
         private Dictionary<Vector2Int, int> m_cacheLookupTable;
-        private Dictionary<int, Vector2Int> m_reverseCacheLookup;
+        private Vector2Int[] m_reverseCacheLookup;
 
         private HashSet<Vector2Int> m_loading; // Cache loading task that have been submitted
 
@@ -110,7 +111,7 @@ public class TileCacheManager
         public TileCache(MonoBehaviour owner, int capacity, string path)
         {
             this.m_cacheLookupTable = new Dictionary<Vector2Int, int>();
-            this.m_reverseCacheLookup = new Dictionary<int, Vector2Int>();
+            this.m_reverseCacheLookup = new Vector2Int[capacity];
             this.m_loading = new HashSet<Vector2Int>();
             this.m_capacity = capacity;
             this.m_vacantId = capacity - 1;
@@ -129,11 +130,12 @@ public class TileCacheManager
                     return m_cachedTextures[index];
                 }
             }
+            // Debug.Log($"Failed to acquire tile {tileCoordinates}");
             return null;
         }
 
         public void LoadTile(Vector2Int tileCoordinates, int priority = 0)
-        {
+        {   
             // skip those already cached or being processed
             if (m_cacheLookupTable.ContainsKey(tileCoordinates))
             {
@@ -155,7 +157,7 @@ public class TileCacheManager
             ResourceRequest request = Resources.LoadAsync<Texture2D>(textureTilePath);
             request.priority = priority;
             yield return request;
-
+            
             // Loading finished
             m_loading.Remove(coords);
 
@@ -169,33 +171,33 @@ public class TileCacheManager
                 Debug.LogWarningFormat("Failed to get available slot in cache, got {0}.", slot);
                 yield break;
             }
+            Debug.Log($"Saving cache {coords} at slot {slot}");
             
             // update lookupdable
-            if (m_reverseCacheLookup.TryGetValue(slot, out Vector2Int oldCoords))
-            {
-                m_cacheLookupTable.Remove(oldCoords);
-                m_reverseCacheLookup.Remove(slot);
-            }
-
-            // save cached texture
-            m_cacheLookupTable.Add(coords, slot);
-            m_reverseCacheLookup.Add(slot, coords);
+            m_cacheLookupTable[coords] = slot;
+            m_reverseCacheLookup[slot] = coords;
             m_cachedTextures[slot] = loadedTextureTile;
         }
 
-        private bool GetAvailableSlot(out int index)
+        private bool GetAvailableSlot(out int slot)
         {
             if (m_vacantId < 0)
             {
                 // cache full, need to free up space
-                index = m_lruInfoCache.First;
+                slot = m_lruInfoCache.First;
+                Vector2Int oldTileCoord = m_reverseCacheLookup[slot];
+                m_cacheLookupTable.Remove(oldTileCoord);
+                m_reverseCacheLookup[slot] = new Vector2Int(int.MinValue, int.MinValue);
+                m_cachedTextures[slot] = null;
+                
+                Debug.Log($"Removing cache {oldTileCoord} at slot {slot}");
             }
             else
             {
-                index = m_vacantId--;
+                slot = m_vacantId--;
             }
 
-            return m_lruInfoCache.SetActive(index);
+            return m_lruInfoCache.SetActive(slot);
         }
     }
     

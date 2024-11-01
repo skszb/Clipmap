@@ -50,9 +50,10 @@ public class Clipmap : MonoBehaviour
     public Texture2D ClipmapPyramid { get; private set; }
 
     // The snapped center of each clipmap level in the mip space
-    private Vector2Int[] m_clipCenters;
+    public Vector2Int[] m_clipCenters;
+    public Vector2Int[] m_latestValidClipCenters;
+    
     private Vector4[] m_clipCentersFloat; // cached for passing to shader
-    private Vector2Int[] m_latestValidClipCenters;
 
     public int m_maxTextureLOD = 0;
 
@@ -111,7 +112,7 @@ public class Clipmap : MonoBehaviour
             
             // We are updating from the level of highest precision, so we can safely skip the rest if current one doesn't need update
             List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_latestValidClipCenters[depth], m_clipCenters[depth], m_clipSize);
-            if (!regionsToUpdate.Any()) break;
+            // if (!regionsToUpdate.Any()) break;
             
             // 1. get cached texture tiles where the need-to-update regions lie within 
             var regionPairsToUpdate = new  List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)>();
@@ -146,7 +147,7 @@ public class Clipmap : MonoBehaviour
                         continue;
                     }
                     
-                    AABB2Int regionInBothTiles = regionPair.croppedUpdateRegion.ClampBy(tile);
+                    AABB2Int regionInBothTiles = regionPair.croppedUpdateRegion.Clamp(tile);
                     if (regionInBothTiles.IsValid())
                     {
                         int srcX = regionInBothTiles.min.x - regionPair.tileBound.min.x;
@@ -298,13 +299,13 @@ public class Clipmap : MonoBehaviour
     }
     
     
-    // A method for getting the new covered regions by square tile movement, in the form of list of AABB2Ints
+    // get the newly covered region after the clip-region moves, in the form of a list of AABB2Ints
     private static List<AABB2Int> GetUpdateRegions(in Vector2Int oldCenter, in Vector2Int newCenter, int tileSize)
     {
         Vector2Int diff = newCenter - oldCenter;
         Vector2Int absDiff = new Vector2Int(Math.Abs(diff.x), Math.Abs(diff.y));
         int tileHalfSize = tileSize / 2;
-
+        
         List<AABB2Int> updateRegions = new List<AABB2Int>();
         // Find the updated regions in current space
         // We separate the update regions into at most 2 parts:
@@ -355,10 +356,8 @@ public class Clipmap : MonoBehaviour
                 yUpdateZone.min.x = newCenter.x - tileHalfSize;
                 yUpdateZone.max.x = yUpdateZone.min.x + tileSize - absDiff.x;
             }
-
             updateRegions.Add(yUpdateZone);
         }
-
         return updateRegions;
     }
 }

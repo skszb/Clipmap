@@ -3,8 +3,9 @@ using UnityEngine;
 
 public struct AABB2Int
 {
-    public Vector2Int min;
     public Vector2Int max;
+    public Vector2Int min;
+
 
 
     public AABB2Int(Vector2Int min, Vector2Int max)
@@ -88,12 +89,12 @@ public struct AABB2Int
     }
     
     // Clamp this AABB to within the given AABB box
-    public AABB2Int ClampBy(AABB2Int box)
+    public AABB2Int Clamp(AABB2Int box)
     {
         return new AABB2Int(Math.Max(box.min.x, min.x), Math.Max(box.min.y, min.y),
             Math.Min(box.max.x, max.x), Math.Min(box.max.y, max.y));
     }
-
+    
     // Clamp the coordinate of given vector to within this AABB
     public Vector2Int ClampVec2Int(Vector2Int vector)
     {
