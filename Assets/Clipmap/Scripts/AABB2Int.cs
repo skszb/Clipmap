@@ -89,6 +89,7 @@ public struct AABB2Int
     }
     
     // Clamp this AABB to within the given AABB box
+    // TODO: this is intersection, change naming and to static 
     public AABB2Int Clamp(AABB2Int box)
     {
         return new AABB2Int(Math.Max(box.min.x, min.x), Math.Max(box.min.y, min.y),

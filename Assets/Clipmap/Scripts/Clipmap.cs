@@ -112,7 +112,7 @@ public class Clipmap : MonoBehaviour
             
             // We are updating from the level of highest precision, so we can safely skip the rest if current one doesn't need update
             List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_latestValidClipCenters[depth], m_clipCenters[depth], m_clipSize);
-            // if (!regionsToUpdate.Any()) break;
+            if (!regionsToUpdate.Any()) break;
             
             // 1. get cached texture tiles where the need-to-update regions lie within 
             var regionPairsToUpdate = new  List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)>();
