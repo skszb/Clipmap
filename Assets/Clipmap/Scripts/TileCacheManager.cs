@@ -43,8 +43,7 @@ public class TileCacheManager
         int halfTextureSize = m_baseTextureSizes[depth] / 2;
         // convert to texel space
         updateRegion += halfTextureSize;
-
-
+        
         // Get the coordinates to the tiles that contains the given area
         int tileSize = m_tileSizes[depth];
         var bottomLeft = ClipmapUtil.SnapToGrid(updateRegion.min, tileSize);
@@ -130,7 +129,6 @@ public class TileCacheManager
                     return m_cachedTextures[index];
                 }
             }
-            // Debug.Log($"Failed to acquire tile {tileCoordinates}");
             return null;
         }
 
@@ -171,7 +169,6 @@ public class TileCacheManager
                 Debug.LogWarningFormat("Failed to get available slot in cache, got {0}.", slot);
                 yield break;
             }
-            Debug.Log($"Saving cache {coords} at slot {slot}");
             
             // update lookupdable
             m_cacheLookupTable[coords] = slot;
@@ -183,20 +180,29 @@ public class TileCacheManager
         {
             if (m_vacantId < 0)
             {
+                // unsafe {
+                //     string order = "";
+                //     int headid = m_lruInfoCache.First;
+                //     for (var i = 0; i < m_capacity; ++i)
+                //     {
+                //         order += $"{m_lruInfoCache.nodeInfoList[headid].id} => ";
+                //         headid = m_lruInfoCache.nodeInfoList[headid].nextID;
+                //     }
+                //     Debug.Log($"Freeing head {m_lruInfoCache.First} \n new order: {order}");
+                // }
+                
                 // cache full, need to free up space
                 slot = m_lruInfoCache.First;
                 Vector2Int oldTileCoord = m_reverseCacheLookup[slot];
                 m_cacheLookupTable.Remove(oldTileCoord);
                 m_reverseCacheLookup[slot] = new Vector2Int(int.MinValue, int.MinValue);
                 m_cachedTextures[slot] = null;
-                
-                Debug.Log($"Removing cache {oldTileCoord} at slot {slot}");
             }
             else
             {
                 slot = m_vacantId--;
             }
-
+            
             return m_lruInfoCache.SetActive(slot);
         }
     }
@@ -321,7 +327,6 @@ public class TileCacheManager
 
             ref FNodeInfo nodeInfo = ref nodeInfoList[id];
             if (nodeInfo.id == tailNodeInfo.id) { return true; }
-
             Remove(ref nodeInfo);
             AddLast(ref nodeInfo);
             return true;

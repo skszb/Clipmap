@@ -24,10 +24,7 @@ public class Clipmap : MonoBehaviour
 
     // Faked as data in disk, should be changed to streaming address later 
     private Texture2D[] m_baseMipTexture;
-
-    // The memory chunk that is larger than the actual mip texture, acts as a cache, 
-    // Currently load the whole texture to fake as a 2nd-level cache in mem
-    private Texture2D[] m_clipmapStackCache;
+    
     
     // the bounding box of the safe region that the clipmap center can move, so that the clipmap level does not include areas beyond the mip texture
     private AABB2Int[] m_clipmapCenterSafeRegion;
@@ -112,7 +109,7 @@ public class Clipmap : MonoBehaviour
             
             // We are updating from the level of highest precision, so we can safely skip the rest if current one doesn't need update
             List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_latestValidClipCenters[depth], m_clipCenters[depth], m_clipSize);
-            if (!regionsToUpdate.Any()) break;
+            if (!regionsToUpdate.Any()) continue;
             
             // 1. get cached texture tiles where the need-to-update regions lie within 
             var regionPairsToUpdate = new  List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)>();
@@ -135,7 +132,6 @@ public class Clipmap : MonoBehaviour
             };
 
             int copyIncomplete = 0;
-            int mipHalfSize = m_mipHalfSize[depth];
             foreach (AABB2Int tile in tilesToUpdate)
             {
                 foreach (var regionPair in regionPairsToUpdate)
@@ -168,9 +164,7 @@ public class Clipmap : MonoBehaviour
                 m_clipCentersFloat[depth].x = updatedClipCenter.x;
                 m_clipCentersFloat[depth].y = updatedClipCenter.y;
             }
-            
         }
-
         PassDynamicUniforms();
     }
 
@@ -217,7 +211,6 @@ public class Clipmap : MonoBehaviour
         }
 
         m_clipmapStackLevelCount = m_clipmapLevelCount - 1;
-        m_clipmapStackCache = new Texture2D[m_clipmapStackLevelCount];
         m_clipCenters = new Vector2Int[m_clipmapStackLevelCount];
         m_clipCentersFloat = new Vector4[m_clipmapStackLevelCount];
         m_latestValidClipCenters = new Vector2Int[m_clipmapStackLevelCount];
@@ -241,24 +234,12 @@ public class Clipmap : MonoBehaviour
         for (int depth = 0; depth < m_clipmapStackLevelCount; 
              depth++, clipScaleToMip >>= 1, mipScaleToWorld <<= 1)
         {
-            int mipSize = m_mipSize[depth];
-
-            // Initialize cache from disk, currently load the whole mip texture, should change to data streaming later
-            m_clipmapStackCache[depth] = new Texture2D(mipSize, mipSize, m_mipTextureFormat, false, false);
-            Texture2D mipmapLevelDiskData = m_baseMipTexture[depth];
-            Texture2D clipmapLevelCache = m_clipmapStackCache[depth];
-            Graphics.CopyTexture(mipmapLevelDiskData, 0, 0, 0, 0, clipmapLevelCache.width, clipmapLevelCache.height,
-                clipmapLevelCache, 0, 0, 0, 0);
-            // Revised Version TODO: replace code above
-            // m_tileCacheManager.LoadTiles(new AABB2Int(0, 0, mipSize,  mipSize) - mipSize / 2, depth);
-
             // Initialize clipmap stack levels
             // Set clipmap centers outside the mip area so that their textures will be automatically loaded in the first update
             int safeRegionHalfSize = m_mipHalfSize[depth] - m_clipHalfSize;
             m_clipmapCenterSafeRegion[depth] = new AABB2Int(-safeRegionHalfSize, -safeRegionHalfSize,
                 safeRegionHalfSize, safeRegionHalfSize);
-            m_clipCenters[depth] = m_clipmapCenterSafeRegion[depth].min -
-                                                       new Vector2Int(m_clipSize, m_clipSize);
+            m_clipCenters[depth] = m_clipmapCenterSafeRegion[depth].min - new Vector2Int(m_clipSize, m_clipSize);
             m_latestValidClipCenters[depth] = m_clipCenters[depth];
             m_clipCentersFloat[depth].x = m_clipCenters[depth].x;
             m_clipCentersFloat[depth].y = m_clipCenters[depth].y;
@@ -303,7 +284,7 @@ public class Clipmap : MonoBehaviour
     private static List<AABB2Int> GetUpdateRegions(in Vector2Int oldCenter, in Vector2Int newCenter, int tileSize)
     {
         Vector2Int diff = newCenter - oldCenter;
-        Vector2Int absDiff = new Vector2Int(Math.Abs(diff.x), Math.Abs(diff.y));
+        int updateWidth = Math.Min(tileSize, Math.Abs(diff.x));
         int tileHalfSize = tileSize / 2;
         
         List<AABB2Int> updateRegions = new List<AABB2Int>();
@@ -311,18 +292,18 @@ public class Clipmap : MonoBehaviour
         // We separate the update regions into at most 2 parts:
         // (1) the rectangular update zone that is of the size (x,tileSize)
         // (2) the rest of the update zone
-        if (absDiff.x > 0)
+        if (updateWidth > 0)
         {
             AABB2Int xUpdateZone = new AABB2Int();
             if (diff.x < 0)
             {
                 xUpdateZone.min.x = newCenter.x - tileHalfSize;
-                xUpdateZone.max.x = xUpdateZone.min.x + absDiff.x;
+                xUpdateZone.max.x = xUpdateZone.min.x + updateWidth;
             }
             else
             {
                 xUpdateZone.max.x = newCenter.x + tileHalfSize;
-                xUpdateZone.min.x = xUpdateZone.max.x - absDiff.x;
+                xUpdateZone.min.x = xUpdateZone.max.x - updateWidth;
             }
 
             xUpdateZone.min.y = newCenter.y - tileHalfSize;
@@ -332,29 +313,30 @@ public class Clipmap : MonoBehaviour
 
         // We will skip vertical update if there is no displacement along the y-axis or
         // if the x-axis displacement is too large that already covers the entire tile
-        if (absDiff.y > 0 && absDiff.x < tileSize)
+        int updateHeight = Math.Min(tileSize, Math.Abs(diff.y));
+        if (updateHeight > 0 && updateWidth < tileSize)
         {
             AABB2Int yUpdateZone = new AABB2Int();
             if (diff.y < 0)
             {
                 yUpdateZone.min.y = newCenter.y - tileHalfSize;
-                yUpdateZone.max.y = yUpdateZone.min.y + absDiff.y;
+                yUpdateZone.max.y = yUpdateZone.min.y +updateHeight;
             }
             else
             {
                 yUpdateZone.max.y = newCenter.y + tileHalfSize;
-                yUpdateZone.min.y = yUpdateZone.max.y - absDiff.y;
+                yUpdateZone.min.y = yUpdateZone.max.y - updateHeight;
             }
 
             if (diff.x < 0)
             {
                 yUpdateZone.max.x = newCenter.x + tileHalfSize;
-                yUpdateZone.min.x = yUpdateZone.max.x - tileSize + absDiff.x;
+                yUpdateZone.min.x = yUpdateZone.max.x - tileSize + updateWidth;
             }
             else
             {
                 yUpdateZone.min.x = newCenter.x - tileHalfSize;
-                yUpdateZone.max.x = yUpdateZone.min.x + tileSize - absDiff.x;
+                yUpdateZone.max.x = yUpdateZone.min.x + tileSize - updateWidth;
             }
             updateRegions.Add(yUpdateZone);
         }

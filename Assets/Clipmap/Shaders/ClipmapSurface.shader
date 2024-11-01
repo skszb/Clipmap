@@ -134,12 +134,14 @@ Shader "Unlit/ClipmapSurface"
                 }
             }
 
+
             // ========== Shader Stage =============================================================================
             v2f vert(appdata v)
             {
                 v2f o;
-                o.pos = TransformObjectToHClip(v.vPos);
                 o.uv = 1.0 - v.uv;
+                o.pos = TransformObjectToHClip(v.vPos);
+                
                 return o;
             }
 

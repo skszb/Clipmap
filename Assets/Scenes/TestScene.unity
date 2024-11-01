@@ -903,7 +903,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28696389163d399448da558ba47c55a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mainSpeed: 100
+  mainSpeed: 200
   maxSpeed: 500
   camSens: 3
   pause: 0
@@ -1259,6 +1259,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_clipmapConfiguration: {fileID: 11400000, guid: 82c3c3c10a3c16c40a9013d153350264,
     type: 2}
+  m_clipCenters: []
+  m_latestValidClipCenters: []
   m_maxTextureLOD: 0
 --- !u!154 &1352345657
 TerrainCollider:
