@@ -101,15 +101,19 @@ public class Clipmap : MonoBehaviour
 
         UpdateCurrentCenters(centerInWorldSpace);
 
-        m_maxTextureLOD = 0;
+        m_maxTextureLOD = m_clipmapStackLevelCount;
         
-        for (int depth = 0; depth < m_clipmapStackLevelCount;  depth++)
+        for (int depth = m_maxTextureLOD - 1; depth >= 0; --depth)
         {
             Vector2Int updatedClipCenter = m_clipCenters[depth];
             
             // We are updating from the level of highest precision, so we can safely skip the rest if current one doesn't need update
             List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_latestValidClipCenters[depth], m_clipCenters[depth], m_clipSize);
-            if (!regionsToUpdate.Any()) continue;
+            if (!regionsToUpdate.Any())
+            {
+                --m_maxTextureLOD;
+                continue;
+            }
             
             // 1. get cached texture tiles where the need-to-update regions lie within 
             var regionPairsToUpdate = new  List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)>();
@@ -156,13 +160,14 @@ public class Clipmap : MonoBehaviour
                     }
                 }
             }
-            m_maxTextureLOD += copyIncomplete;
-            
+            // TODO: Fix Update Error
             if (copyIncomplete == 0)
             {
                 m_latestValidClipCenters[depth] = updatedClipCenter;
                 m_clipCentersFloat[depth].x = updatedClipCenter.x;
                 m_clipCentersFloat[depth].y = updatedClipCenter.y;
+
+                --m_maxTextureLOD;
             }
         }
         PassDynamicUniforms();
@@ -234,11 +239,11 @@ public class Clipmap : MonoBehaviour
         for (int depth = 0; depth < m_clipmapStackLevelCount; 
              depth++, clipScaleToMip >>= 1, mipScaleToWorld <<= 1)
         {
-            // Initialize clipmap stack levels
-            // Set clipmap centers outside the mip area so that their textures will be automatically loaded in the first update
             int safeRegionHalfSize = m_mipHalfSize[depth] - m_clipHalfSize;
             m_clipmapCenterSafeRegion[depth] = new AABB2Int(-safeRegionHalfSize, -safeRegionHalfSize,
                 safeRegionHalfSize, safeRegionHalfSize);
+            
+            // Set clipmap centers outside the mip area so that their textures will be automatically loaded in the first update
             m_clipCenters[depth] = m_clipmapCenterSafeRegion[depth].min - new Vector2Int(m_clipSize, m_clipSize);
             m_latestValidClipCenters[depth] = m_clipCenters[depth];
             m_clipCentersFloat[depth].x = m_clipCenters[depth].x;

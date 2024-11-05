@@ -840,7 +840,7 @@ Transform:
   m_GameObject: {fileID: 719661108}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.5288676, z: -0, w: 0.8487043}
-  m_LocalPosition: {x: 1262, y: 1.67, z: 1482}
+  m_LocalPosition: {x: -103, y: 1.67, z: -170}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -903,8 +903,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28696389163d399448da558ba47c55a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mainSpeed: 200
-  maxSpeed: 500
+  mainSpeed: 512
+  maxSpeed: 1024
   camSens: 3
   pause: 0
 --- !u!1 &970880495
@@ -1319,7 +1319,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _EnableTransitionRegionOverlay: 1
+    - _EnableTransitionRegionOverlay: 0.5
     m_Colors: []
   m_BuildTextureStacks: []
 --- !u!1 &1636846454

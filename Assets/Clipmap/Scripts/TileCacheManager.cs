@@ -180,18 +180,18 @@ public class TileCacheManager
         {
             if (m_vacantId < 0)
             {
-                // unsafe {
-                //     string order = "";
-                //     int headid = m_lruInfoCache.First;
-                //     for (var i = 0; i < m_capacity; ++i)
-                //     {
-                //         order += $"{m_lruInfoCache.nodeInfoList[headid].id} => ";
-                //         headid = m_lruInfoCache.nodeInfoList[headid].nextID;
-                //     }
-                //     Debug.Log($"Freeing head {m_lruInfoCache.First} \n new order: {order}");
-                // }
+                unsafe {
+                    string order = "";
+                    int headid = m_lruInfoCache.First;
+                    for (var i = 0; i < m_capacity; ++i)
+                    {
+                        order += $"{m_lruInfoCache.nodeInfoList[headid].id} => ";
+                        headid = m_lruInfoCache.nodeInfoList[headid].nextID;
+                    }
+                    Debug.Log($"Freeing head {m_lruInfoCache.First} \n new order: {order}");
+                }
                 
-                // cache full, need to free up space
+                // Cache full, need to free up space
                 slot = m_lruInfoCache.First;
                 Vector2Int oldTileCoord = m_reverseCacheLookup[slot];
                 m_cacheLookupTable.Remove(oldTileCoord);
