@@ -14,9 +14,9 @@ public class ClipmapConfiguration : ScriptableObject
     public Texture2D[] BaseTexture;
 
     [Space(10)] [Header("Tile Cache Descriptor")] [Space(5)]
-
+    
     public string[] folderName;
     public int[] baseTextureSize;
-    public int[] tileSize;
-    public int[] capacity;
+    public int tileSize;
+    
 }

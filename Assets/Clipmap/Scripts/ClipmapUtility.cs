@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-internal class ClipmapUtil
+internal static class ClipmapUtility
 {
     public static int FloorDivision(int num1, int num2)
     {
@@ -23,4 +23,6 @@ internal class ClipmapUtil
     {
         return FloorDivision(coord, gridSize) * gridSize;
     }
+    
+    
 }

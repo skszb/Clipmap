@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -12,65 +13,87 @@ using Object = UnityEngine.Object;
 
 public class TileCacheManager
 {
+    private TextureTileCache[] m_tileCaches;
+    private int[] m_baseTextureSizes;
+    private int[] m_tileSizes;
+    private MonoBehaviour m_owner = null;
     
-    private List<TileCache> m_tileCaches;
-    private List<int> m_baseTextureSizes;
-    private List<int> m_tileSizes;
-
-    private string m_path = "Cache/TextureTileCache";
-
-    public void Initialize(MonoBehaviour owner, int[] baseTextureSize, int[] tileSize, string[] folderName, int[] capacity)
+    public void Initialize(MonoBehaviour owner, int layerCount)
     {
-        int depth = folderName.Length;
-        m_tileCaches = new List<TileCache>(depth);
-        m_baseTextureSizes = new List<int>(depth);
-        m_tileSizes = new List<int>(depth);
+        m_owner = owner;
+        m_tileCaches = new TextureTileCache[layerCount];
+        m_baseTextureSizes = new int[layerCount];
+        m_tileSizes = new int[layerCount];
+    }
+
+    public void SetCacheAtDepth(int depth, int baseTextureSize, int tileSize, string folderPath, int capacity)
+    {
+        m_tileCaches[depth] = new TextureTileCache(m_owner, capacity, folderPath);
+        m_baseTextureSizes[depth] = baseTextureSize;
+        m_tileSizes[depth] = tileSize;
+    }
+    
+    public class TextureTileInfo
+    {
+        public Texture2D Texture;
+        public AABB2Int Bound;
         
-        for (var i = 0; i < depth; ++i)
+        public TextureTileInfo(Texture2D texture, AABB2Int bound)
         {
-            m_tileCaches.Add(new TileCache(owner, capacity[i], m_path + "/" + folderName[i]));
-            m_baseTextureSizes.Add(baseTextureSize[i]);
-            m_tileSizes.Add(tileSize[i]);
+            Texture = texture;
+            Bound = bound;
         }
     }
 
-    // Return the texture tiles that the given region lies within. If a tile isn't cached yet, it will be null
-    public List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)> GetTiles(
-        AABB2Int updateRegion, int depth)
+    public class TextureLoadResult
     {
-        var ret = new List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)>();
-        TileCache tileCache = m_tileCaches[depth];
+        public List<TextureTileInfo> Successful;
+        public List<TextureTileInfo> Failed;
+    }
+    
+    // Return the texture tiles that the given region lies within. If a tile isn't cached yet, it will be null
+    public bool GetTiles(AABB2Int updateRegion, int depth, out TextureLoadResult result)
+    {
+        result = new TextureLoadResult
+        {
+            Successful = new List<TextureTileInfo>(),
+            Failed = new List<TextureTileInfo>()
+        };
+        
+        TextureTileCache textureTileCache = m_tileCaches[depth];
         int halfTextureSize = m_baseTextureSizes[depth] / 2;
-        // convert to texel space
+        // convert to texel space``
         updateRegion += halfTextureSize;
         
         // Get the coordinates to the tiles that contains the given area
         int tileSize = m_tileSizes[depth];
-        var bottomLeft = ClipmapUtil.SnapToGrid(updateRegion.min, tileSize);
-
+        var bottomLeft = ClipmapUtility.SnapToGrid(updateRegion.min, tileSize);
+   
         for (var coord = bottomLeft; coord.x < updateRegion.max.x; coord.x += tileSize)
         {
             for (coord.y = bottomLeft.y; coord.y < updateRegion.max.y; coord.y += tileSize)
             {
-                Texture2D tile = tileCache.TryAcquireTile(coord);
-                AABB2Int tileBound = new AABB2Int(coord.x, coord.y, coord.x + tileSize, coord.y + tileSize);
-                AABB2Int croppedUpdateRegion = updateRegion.Clamp(tileBound);
-                if (!croppedUpdateRegion.IsValid())
-                {
-                    continue;
-                }
-
+                Texture2D tile = textureTileCache.TryAcquireTile(coord);
                 // convert back to mip space of [-halfTextureSize, +halfTextureSize) for easier addressing in clipmap update
-                ret.Add((tile, tileBound - halfTextureSize, croppedUpdateRegion - halfTextureSize));
+                AABB2Int tileBound = new AABB2Int(coord.x, coord.y, coord.x + tileSize, coord.y + tileSize);
+                tileBound -= halfTextureSize;
+                if (tile is not null)
+                {
+                    result.Successful.Add(new TextureTileInfo(tile, tileBound));
+                }
+                else
+                {
+                    result.Failed.Add(new TextureTileInfo(null, tileBound));
+                }
             }
         }
 
-        return ret;
+        return !result.Failed.Any() && result.Successful.Any();
     }
 
-    public void LoadTiles(AABB2Int updateRegion, int depth)
+    public void LoadRequiredTiles(AABB2Int updateRegion, int depth)
     {
-        TileCache tileCache = m_tileCaches[depth];
+        TextureTileCache textureTileCache = m_tileCaches[depth];
         int tileSize = m_tileSizes[depth];
         int textureSize = m_baseTextureSizes[depth];
 
@@ -78,28 +101,38 @@ public class TileCacheManager
         updateRegion += textureSize / 2;
         updateRegion.Clamp(new AABB2Int(0, 0, textureSize, textureSize));
 
-        var bottomLeft = ClipmapUtil.SnapToGrid(updateRegion.min, tileSize);
+        var bottomLeft = ClipmapUtility.SnapToGrid(updateRegion.min, tileSize);
 
         for (var coord = bottomLeft; coord.x < updateRegion.max.x; coord.x += tileSize)
         {
             for (coord.y = bottomLeft.y; coord.y < updateRegion.max.y; coord.y += tileSize)
             {
-                tileCache.LoadTile(coord, -depth);
+                textureTileCache.LoadTile(coord, -depth);
             }
         }
     }
+
+    public List<Vector2Int> GetCachedTileCoords(int depth)
+    {
+        if (depth < 0 || depth >= m_tileCaches.Length)
+        {
+            return null;
+        }
+
+        return m_tileCaches[depth].m_cacheLookupTable.Keys.ToList();
+    }
     
-    internal class TileCache
+    internal class TextureTileCache
     {
         private int m_capacity;
 
-        private int m_vacantId; // TODO: Coroutine will make a hard copy!
+        private int m_vacantId; // TODO: Coroutine will make a hard copy!, use TextureTileCache as class to fix
 
         // Bidirectional map <Tile coordinates, LRUCacheInfo id>, for tiles already cached
-        private Dictionary<Vector2Int, int> m_cacheLookupTable;
-        private Vector2Int[] m_reverseCacheLookup;
+        public Dictionary<Vector2Int, int> m_cacheLookupTable {get; private set; }
+        public Vector2Int[] m_reverseCacheLookup {get; private set; }
 
-        private HashSet<Vector2Int> m_loading; // Cache loading task that have been submitted
+        private HashSet<Vector2Int> m_loading; // Cache loading request that have been submitted
 
         private FLruCache m_lruInfoCache;
         Texture2D[] m_cachedTextures;
@@ -107,7 +140,7 @@ public class TileCacheManager
         private string m_path;
         private MonoBehaviour m_owner;
 
-        public TileCache(MonoBehaviour owner, int capacity, string path)
+        public TextureTileCache(MonoBehaviour owner, int capacity, string path)
         {
             this.m_cacheLookupTable = new Dictionary<Vector2Int, int>();
             this.m_reverseCacheLookup = new Vector2Int[capacity];
@@ -124,7 +157,7 @@ public class TileCacheManager
         {
             if (m_cacheLookupTable.TryGetValue(tileCoordinates, out int index))
             {
-                if (m_lruInfoCache.SetActive(index))
+                // if (m_lruInfoCache.SetActive(index))
                 {
                     return m_cachedTextures[index];
                 }
@@ -180,23 +213,14 @@ public class TileCacheManager
         {
             if (m_vacantId < 0)
             {
-                unsafe {
-                    string order = "";
-                    int headid = m_lruInfoCache.First;
-                    for (var i = 0; i < m_capacity; ++i)
-                    {
-                        order += $"{m_lruInfoCache.nodeInfoList[headid].id} => ";
-                        headid = m_lruInfoCache.nodeInfoList[headid].nextID;
-                    }
-                    Debug.Log($"Freeing head {m_lruInfoCache.First} \n new order: {order}");
-                }
-                
                 // Cache full, need to free up space
                 slot = m_lruInfoCache.First;
                 Vector2Int oldTileCoord = m_reverseCacheLookup[slot];
                 m_cacheLookupTable.Remove(oldTileCoord);
                 m_reverseCacheLookup[slot] = new Vector2Int(int.MinValue, int.MinValue);
                 m_cachedTextures[slot] = null;
+
+                // PrintLRUInfo();
             }
             else
             {
@@ -204,6 +228,20 @@ public class TileCacheManager
             }
             
             return m_lruInfoCache.SetActive(slot);
+        }
+
+        private void PrintLRUInfo()
+        {
+            unsafe {
+                string order = "";
+                int curId = m_lruInfoCache.First;
+                for (var i = 0; i < m_capacity; ++i)
+                {
+                    order += $"{m_lruInfoCache.nodeInfoList[curId].id} => ";
+                    curId = m_lruInfoCache.nodeInfoList[curId].nextID;
+                }
+                Debug.Log($"LRU: {order}");
+            }
         }
     }
     

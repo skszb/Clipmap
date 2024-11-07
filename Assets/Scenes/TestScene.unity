@@ -360,8 +360,8 @@ Transform:
   m_GameObject: {fileID: 298679580}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11983, y: 0, z: -5486}
-  m_LocalScale: {x: 256, y: 0, z: 256}
+  m_LocalPosition: {x: 11983, y: 0, z: -6428}
+  m_LocalScale: {x: 512, y: 0, z: 512}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -840,7 +840,7 @@ Transform:
   m_GameObject: {fileID: 719661108}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.5288676, z: -0, w: 0.8487043}
-  m_LocalPosition: {x: -103, y: 1.67, z: -170}
+  m_LocalPosition: {x: 261, y: 4, z: 159}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -904,7 +904,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainSpeed: 512
-  maxSpeed: 1024
+  maxSpeed: 12288
   camSens: 3
   pause: 0
 --- !u!1 &970880495
@@ -1131,7 +1131,6 @@ GameObject:
   - component: {fileID: 1352345651}
   - component: {fileID: 1352345656}
   - component: {fileID: 1352345655}
-  - component: {fileID: 1352345657}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -1257,31 +1256,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56b39ba935cba49499d41aa380878bad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DRAW_DEBUG_INFO: 0
   m_clipmapConfiguration: {fileID: 11400000, guid: 82c3c3c10a3c16c40a9013d153350264,
     type: 2}
   m_clipCenters: []
   m_latestValidClipCenters: []
+  m_clipCentersFloat: []
   m_maxTextureLOD: 0
---- !u!154 &1352345657
-TerrainCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1352345650}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_TerrainData: {fileID: 0}
-  m_EnableTreeColliders: 1
 --- !u!21 &1396586130
 Material:
   serializedVersion: 8
@@ -1319,7 +1300,7 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _EnableTransitionRegionOverlay: 0.5
+    - _EnableTransitionRegionOverlay: 0
     m_Colors: []
   m_BuildTextureStacks: []
 --- !u!1 &1636846454
@@ -1714,7 +1695,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 11983, y: 0, z: -4650}
-  m_LocalScale: {x: 256, y: 0, z: 256}
+  m_LocalScale: {x: 512, y: 0, z: 512}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -1818,8 +1799,8 @@ Transform:
   m_GameObject: {fileID: 1862192499}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11983, y: 0, z: -5206}
-  m_LocalScale: {x: 256, y: 0, z: 256}
+  m_LocalPosition: {x: 11983, y: 0, z: -5830}
+  m_LocalScale: {x: 512, y: 0, z: 512}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}
@@ -1923,8 +1904,8 @@ Transform:
   m_GameObject: {fileID: 2103083385}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 11983, y: 0, z: -4929}
-  m_LocalScale: {x: 256, y: 0, z: 256}
+  m_LocalPosition: {x: 11983, y: 0, z: -5214}
+  m_LocalScale: {x: 512, y: 0, z: 512}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1812101570}

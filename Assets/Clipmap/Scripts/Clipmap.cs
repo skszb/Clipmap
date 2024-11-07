@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.PlayerLoop;
 
 
 /*
@@ -20,14 +21,17 @@ Terminologies:
 // [ExecuteInEditMode]
 public class Clipmap : MonoBehaviour
 {
+    public bool DRAW_DEBUG_INFO;
+    
     [SerializeField] private ClipmapConfiguration m_clipmapConfiguration;
 
     // Faked as data in disk, should be changed to streaming address later 
-    private Texture2D[] m_baseMipTexture;
+    private Texture2D[] m_baseMipTextures;
     
-    
+    private AABB2Int[] m_baseMipTextureBounds;
+
     // the bounding box of the safe region that the clipmap center can move, so that the clipmap level does not include areas beyond the mip texture
-    private AABB2Int[] m_clipmapCenterSafeRegion;
+    private AABB2Int[] m_clipCenterSafeRegions;
 
     // The length in one dimension of a grid in mip space.
     // Depends on clip center deviation, the clipmap will only update a multiple of MipGridSize pixels in a direction
@@ -39,9 +43,13 @@ public class Clipmap : MonoBehaviour
     
     private TileCacheManager m_tileCacheManager;
 
-
-    #region Variables that sync with the surface shader
-
+    private int m_cacheTileSize;
+    
+    // The number of texels in one dimension of look-ahead-cache calculation
+    private int m_cacheSize;
+    private int m_cacheHalfSize;
+    
+    
     public Texture2DArray ClipmapStack { get; private set; }
 
     public Texture2D ClipmapPyramid { get; private set; }
@@ -49,13 +57,11 @@ public class Clipmap : MonoBehaviour
     // The snapped center of each clipmap level in the mip space
     public Vector2Int[] m_clipCenters;
     public Vector2Int[] m_latestValidClipCenters;
-    
-    private Vector4[] m_clipCentersFloat; // cached for passing to shader
+    private Vector2Int[] m_clipCentersLastFrame;
+
+    public Vector4[] m_clipCentersFloat; // cached for passing to shader
 
     public int m_maxTextureLOD = 0;
-
-    /* -------- Only sync when initialize -------- */
-
     
     // The number of texels in one dimension from both ends, used to determine whether to wait for mipTexture update
     private int m_invalidBorder; // TODO: Update every frame: https://notkyon.moe/vt/Clipmap.pdf
@@ -77,7 +83,6 @@ public class Clipmap : MonoBehaviour
     private int[] m_mipHalfSize;
     private float[] m_mipHalfSizeFloat; // cached for passing to shader
 
-    #endregion
     
     private void Awake()
     {
@@ -89,42 +94,181 @@ public class Clipmap : MonoBehaviour
     public void Initialize()
     {
         LoadConfiguration();
-        InitializeMips();
+        InitializeCache();
+        InitializeClipmap();
         PassStaticUniforms();
     }
-
-
-    public void UpdateClipmap(Vector3 cameraPositionInWorldSpace)
+    
+    
+    private void LoadConfiguration()
     {
-        Vector2 centerInWorldSpace = new Vector2(cameraPositionInWorldSpace.x, cameraPositionInWorldSpace.z);
-        float height = cameraPositionInWorldSpace.y;
-
-        UpdateCurrentCenters(centerInWorldSpace);
-
-        m_maxTextureLOD = m_clipmapStackLevelCount;
-        
-        for (int depth = m_maxTextureLOD - 1; depth >= 0; --depth)
+        // Clipmap
+        m_clipSize = m_clipmapConfiguration.ClipSize;
+        m_updateGridSize = m_clipmapConfiguration.ClipmapUpdateGridSize;
+        m_invalidBorder = m_clipmapConfiguration.InvalidBorder;
+        m_mipTextureFormat = m_clipmapConfiguration.TextureFormat;
+        m_clipmapLevelCount = m_clipmapConfiguration.BaseTexture.Length;
+        m_clipmapStackLevelCount = m_clipmapLevelCount - 1;
+        m_clipHalfSize = m_clipSize >> 1;
+        m_mipSize = new int[m_clipmapLevelCount];
+        m_mipSizeFloat = new float[m_clipmapLevelCount];
+        m_mipHalfSize = new int[m_clipmapLevelCount];
+        m_mipHalfSizeFloat = new float[m_clipmapLevelCount];
+        m_baseMipTextures = m_clipmapConfiguration.BaseTexture;
+        m_clipScaleToMip = new float[m_clipmapLevelCount];
+        m_mipScaleToWorld = new float[m_clipmapLevelCount];
+        m_baseMipTextureBounds = new AABB2Int[m_clipmapLevelCount];
+        for (int i = 0; i < m_clipmapLevelCount; i++)
         {
-            Vector2Int updatedClipCenter = m_clipCenters[depth];
+            m_mipSize[i] = m_baseMipTextures[i].width;
+            m_mipSizeFloat[i] = m_mipSize[i];
+            m_mipHalfSize[i] = m_baseMipTextures[i].width >> 1;
+            m_mipHalfSizeFloat[i] = m_mipHalfSize[i];
+            m_baseMipTextureBounds[i] = new AABB2Int(0,0,m_mipSize[i], m_mipSize[i]) - m_mipHalfSize[i];
+        }
+        m_clipCenters = new Vector2Int[m_clipmapStackLevelCount];
+        m_clipCentersLastFrame = new Vector2Int[m_clipmapStackLevelCount];
+        m_clipCentersFloat = new Vector4[m_clipmapStackLevelCount];
+        m_latestValidClipCenters = new Vector2Int[m_clipmapStackLevelCount];
+        m_clipCenterSafeRegions = new AABB2Int[m_clipmapStackLevelCount];
+        ClipmapStack = new Texture2DArray(m_clipSize, m_clipSize, m_clipmapStackLevelCount, m_mipTextureFormat, false,
+            false, true);
+        ClipmapPyramid = new Texture2D(m_clipSize, m_clipSize, m_mipTextureFormat, true, false, true);
+        
+        // Cache
+        m_cacheTileSize = m_clipmapConfiguration.tileSize;
+        m_tileCacheManager = new TileCacheManager();
+    }
+    
+    
+    private void InitializeClipmap()
+    {
+        int clipScaleToMip = 1 << m_clipmapStackLevelCount;
+        int mipScaleToWorld = 1;
+        for (int depth = 0; depth < m_clipmapStackLevelCount; 
+             depth++, clipScaleToMip >>= 1, mipScaleToWorld <<= 1)
+        {
+            int safeRegionHalfSize = m_mipHalfSize[depth] - m_clipHalfSize;
+            m_clipCenterSafeRegions[depth] = new AABB2Int(-safeRegionHalfSize, -safeRegionHalfSize,
+                safeRegionHalfSize, safeRegionHalfSize);
             
-            // We are updating from the level of highest precision, so we can safely skip the rest if current one doesn't need update
-            List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_latestValidClipCenters[depth], m_clipCenters[depth], m_clipSize);
+            // Set clipmap centers outside the mip area so that their textures will be automatically loaded in the first update
+            m_clipCenters[depth] = m_baseMipTextureBounds[depth].min - new Vector2Int(m_mipSize[depth], m_mipSize[depth]);
+            m_latestValidClipCenters[depth] = m_clipCenters[depth];
+            m_clipCentersLastFrame[depth] = m_clipCenters[depth];
+            m_clipCentersFloat[depth].x = m_clipCenters[depth].x;
+            m_clipCentersFloat[depth].y = m_clipCenters[depth].y;
+
+            m_clipScaleToMip[depth] = clipScaleToMip;
+            m_mipScaleToWorld[depth] = mipScaleToWorld;
+        }
+
+        // Use the last level as the clipmap pyramid, it is a fixed texture that covers the whole surface
+        int lastLevelIndex = m_clipmapLevelCount - 1;
+
+        Graphics.CopyTexture(m_baseMipTextures[lastLevelIndex], ClipmapPyramid);
+
+        m_clipScaleToMip[lastLevelIndex] = clipScaleToMip;
+        m_mipScaleToWorld[lastLevelIndex] = mipScaleToWorld;
+        
+        m_maxTextureLOD = m_clipmapStackLevelCount; // set to clipmap pyramid at start
+    }
+
+    
+    private void InitializeCache()
+    {
+        m_tileCacheManager.Initialize(this, m_clipmapStackLevelCount);
+        
+        /*
+            Cache should cover at least the texture areas of the next possible move
+            
+                |__|_|
+             |^^|^^|^^|
+             
+            Theoretical minimum: 
+            int cacheCapacity1Dim = 1 + Mathf.CeilToInt((m_clipSize + m_updateGridSize) / (float)m_cacheTileSize);
+         */
+        int cacheCapacity1Dim = 1 + Mathf.CeilToInt((m_clipSize + m_updateGridSize) / (float)m_cacheTileSize);
+        int cacheCapacity = cacheCapacity1Dim * cacheCapacity1Dim;
+        Debug.Log($"Cache Capacity: {cacheCapacity}.");
+
+        // detection area is the clipSize plus one updateGridSize one each side
+        m_cacheSize = m_clipSize + 2 * m_updateGridSize;
+        m_cacheHalfSize = m_clipSize >> 1;
+        
+        for (int depth = 0; depth < m_clipmapStackLevelCount; depth++)
+        {
+            int baseTextureSize = m_clipmapConfiguration.baseTextureSize[depth];
+            m_tileCacheManager.SetCacheAtDepth(depth, baseTextureSize, m_cacheTileSize, 
+                m_clipmapConfiguration.folderName[depth], cacheCapacity);
+        }
+    }
+    
+    
+    public void UpdateCache(Vector2 camCoord2D, float height)
+    {
+        // TODO: add height logic
+        for (int depth = m_clipmapStackLevelCount - 1; depth >= 0; --depth)
+        {
+            Vector2Int currentClipCenter = m_clipCenters[depth];
+            var updateRegions = GetUpdateRegions(m_clipCentersLastFrame[depth], currentClipCenter, m_cacheSize);
+            foreach (var region in updateRegions)
+            {
+                var validRegion = region.Clamp(m_baseMipTextureBounds[depth]);
+                if (validRegion.IsValid())
+                {
+                    m_tileCacheManager.LoadRequiredTiles(validRegion, depth);
+                }
+            }
+        }
+    }
+
+    
+    public void UpdateClipmap(Vector2 camCoord2D, float height)
+    {
+        // TODO: add height logic
+        
+        for (int depth = m_clipmapStackLevelCount - 1; depth >= 0; --depth)
+        {
+            Vector2Int currentClipCenter = m_clipCenters[depth];
+            
+            List<AABB2Int> regionsToUpdate = GetUpdateRegions(m_latestValidClipCenters[depth], currentClipCenter, m_clipSize);
             if (!regionsToUpdate.Any())
             {
-                --m_maxTextureLOD;
+                m_maxTextureLOD = depth;
                 continue;
             }
-            
+
             // 1. get cached texture tiles where the need-to-update regions lie within 
-            var regionPairsToUpdate = new  List<(Texture2D textureTile, AABB2Int tileBound, AABB2Int croppedUpdateRegion)>();
+            var updateRegionInfo = new  List<(TileCacheManager.TextureTileInfo sourceTextureTileInfo, AABB2Int updateRegionBound)>();
+            bool allCached = true;
             foreach (AABB2Int region in regionsToUpdate)
             {
-                regionPairsToUpdate.AddRange(m_tileCacheManager.GetTiles(region, depth));
+                TileCacheManager.TextureLoadResult loadResult = new TileCacheManager.TextureLoadResult();
+                allCached = allCached && m_tileCacheManager.GetTiles(region, depth, out loadResult);
+
+                if (loadResult.Successful == null)
+                {
+                    Debug.Log("null1");
+                }
+                foreach (TileCacheManager.TextureTileInfo tileInfo in loadResult.Successful)
+                {
+                    updateRegionInfo.Add((tileInfo, region.Clamp(tileInfo.Bound)));
+                }
+                foreach (TileCacheManager.TextureTileInfo tileInfo in loadResult.Failed)
+                {
+                    m_tileCacheManager.LoadRequiredTiles(tileInfo.Bound, depth);
+                }
+            }
+            if (!allCached)
+            {
+                m_maxTextureLOD = depth + 1;
+                break;
             }
             
             // 2. further divide into target regions
-            Vector2Int clipmapBottomLeftCorner = m_clipCenters[depth] - new Vector2Int(m_clipHalfSize, m_clipHalfSize);
-            clipmapBottomLeftCorner = ClipmapUtil.SnapToGrid(clipmapBottomLeftCorner, m_clipSize);
+            Vector2Int clipmapBottomLeftCorner = currentClipCenter - new Vector2Int(m_clipHalfSize, m_clipHalfSize);
+            clipmapBottomLeftCorner = ClipmapUtility.SnapToGrid(clipmapBottomLeftCorner, m_clipSize);
 
             AABB2Int bottomLeftTile = new AABB2Int(clipmapBottomLeftCorner, clipmapBottomLeftCorner + new Vector2Int(m_clipSize, m_clipSize));
             List<AABB2Int> tilesToUpdate = new List<AABB2Int>
@@ -138,130 +282,59 @@ public class Clipmap : MonoBehaviour
             int copyIncomplete = 0;
             foreach (AABB2Int tile in tilesToUpdate)
             {
-                foreach (var regionPair in regionPairsToUpdate)
+                foreach (var regionPair in updateRegionInfo)
                 {
-                    if (regionPair.textureTile is null)
-                    {
-                        copyIncomplete = 1;
-                        m_tileCacheManager.LoadTiles(regionPair.tileBound, depth); // TODO: replace this with look ahead cache
-                        continue;
-                    }
-                    
-                    AABB2Int regionInBothTiles = regionPair.croppedUpdateRegion.Clamp(tile);
+                    AABB2Int regionInBothTiles = regionPair.updateRegionBound.Clamp(tile);
                     if (regionInBothTiles.IsValid())
                     {
-                        int srcX = regionInBothTiles.min.x - regionPair.tileBound.min.x;
-                        int srcY = regionInBothTiles.min.y - regionPair.tileBound.min.y;
+                        int srcX = regionInBothTiles.min.x - regionPair.sourceTextureTileInfo.Bound.min.x;
+                        int srcY = regionInBothTiles.min.y - regionPair.sourceTextureTileInfo.Bound.min.y;
                         int dstX = regionInBothTiles.min.x - tile.min.x;
                         int dstY = regionInBothTiles.min.y - tile.min.y;
-                        Graphics.CopyTexture(regionPair.textureTile, 0, 0, srcX, srcY,
+                        Graphics.CopyTexture(regionPair.sourceTextureTileInfo.Texture, 0, 0, srcX, srcY,
                             regionInBothTiles.Width(), regionInBothTiles.Height(),
                             ClipmapStack, depth, 0, dstX, dstY);
                     }
                 }
             }
-            // TODO: Fix Update Error
-            if (copyIncomplete == 0)
-            {
-                m_latestValidClipCenters[depth] = updatedClipCenter;
-                m_clipCentersFloat[depth].x = updatedClipCenter.x;
-                m_clipCentersFloat[depth].y = updatedClipCenter.y;
 
-                --m_maxTextureLOD;
-            }
+            m_latestValidClipCenters[depth] = currentClipCenter;
+            m_clipCentersFloat[depth].x = currentClipCenter.x;
+            m_clipCentersFloat[depth].y = currentClipCenter.y;
+            
+            m_maxTextureLOD = depth;
         }
         PassDynamicUniforms();
     }
 
     
-    private void UpdateCurrentCenters(Vector2 playerPosition)
+    public void UpdateCamera(Vector3 camPosition)
     {
+        Vector2 camCoord2D = new Vector2(camPosition.x, camPosition.z);
+        float camHeight = camPosition.y;
         
-        for (int depth = 0; depth < m_clipmapStackLevelCount; depth++, playerPosition /= 2)
+        // Update clipmap centers
+        for (int depth = 0; depth < m_clipmapStackLevelCount; depth++, camCoord2D /= 2)
         {
-            // The coordinate of snapped center is floored, so we added a positive bias of half grid size to the player's position 
+            // The coordinate of snapped center is floored, so we added a positive bias of half grid size to the player's position
             // this ensures that the boundary that triggers clipmap update is [-0.5, 0.5) around the center instead of [0, 1);
-            Vector2 biasedPosition = playerPosition + m_updateGridSize * new Vector2(0.5f, 0.5f);
+            Vector2 biasedPosition = camCoord2D + m_updateGridSize * new Vector2(0.5f, 0.5f);
 
-            AABB2Int clipmapCenterSafeRegion = m_clipmapCenterSafeRegion[depth];
-            Vector2Int updatedClipCenter = ClipmapUtil.SnapToGrid(biasedPosition, m_updateGridSize);
-            updatedClipCenter = clipmapCenterSafeRegion.ClampVec2Int(updatedClipCenter);
+            AABB2Int clipCenterSafeRegion = m_clipCenterSafeRegions[depth];
+            Vector2Int updatedClipCenter = ClipmapUtility.SnapToGrid(biasedPosition, m_updateGridSize);
+            updatedClipCenter = clipCenterSafeRegion.ClampVec2Int(updatedClipCenter);
             m_clipCenters[depth] = updatedClipCenter;
         }
-    }
-    
-    
-    private void LoadConfiguration()
-    {
-        m_clipSize = m_clipmapConfiguration.ClipSize;
-        m_updateGridSize = m_clipmapConfiguration.ClipmapUpdateGridSize;
-        m_invalidBorder = m_clipmapConfiguration.InvalidBorder;
-        m_mipTextureFormat = m_clipmapConfiguration.TextureFormat;
-        m_clipmapLevelCount = m_clipmapConfiguration.BaseTexture.Length;
-
-        m_clipHalfSize = m_clipSize >> 1;
-        m_mipSize = new int[m_clipmapLevelCount];
-        m_mipSizeFloat = new float[m_clipmapLevelCount];
-        m_mipHalfSize = new int[m_clipmapLevelCount];
-        m_mipHalfSizeFloat = new float[m_clipmapLevelCount];
-        m_baseMipTexture = m_clipmapConfiguration.BaseTexture;
-        m_clipScaleToMip = new float[m_clipmapLevelCount];
-        m_mipScaleToWorld = new float[m_clipmapLevelCount];
-        for (int i = 0; i < m_clipmapLevelCount; i++)
-        {
-            m_mipSize[i] = m_baseMipTexture[i].width;
-            m_mipSizeFloat[i] = m_mipSize[i];
-            m_mipHalfSize[i] = m_baseMipTexture[i].width >> 1;
-            m_mipHalfSizeFloat[i] = m_mipHalfSize[i];
-        }
-
-        m_clipmapStackLevelCount = m_clipmapLevelCount - 1;
-        m_clipCenters = new Vector2Int[m_clipmapStackLevelCount];
-        m_clipCentersFloat = new Vector4[m_clipmapStackLevelCount];
-        m_latestValidClipCenters = new Vector2Int[m_clipmapStackLevelCount];
-
-        m_clipmapCenterSafeRegion = new AABB2Int[m_clipmapStackLevelCount];
-
-        m_tileCacheManager = new TileCacheManager();
-        m_tileCacheManager.Initialize(this, m_clipmapConfiguration.baseTextureSize, 
-            m_clipmapConfiguration.tileSize, m_clipmapConfiguration.folderName, m_clipmapConfiguration.capacity);
         
-        ClipmapStack = new Texture2DArray(m_clipSize, m_clipSize, m_clipmapStackLevelCount, m_mipTextureFormat, false,
-            false, true);
-        ClipmapPyramid = new Texture2D(m_clipSize, m_clipSize, m_mipTextureFormat, true, false, true);
-    }
-    
-    
-    private void InitializeMips()
-    {
-        int clipScaleToMip = 1 << m_clipmapStackLevelCount;
-        int mipScaleToWorld = 1;
-        for (int depth = 0; depth < m_clipmapStackLevelCount; 
-             depth++, clipScaleToMip >>= 1, mipScaleToWorld <<= 1)
-        {
-            int safeRegionHalfSize = m_mipHalfSize[depth] - m_clipHalfSize;
-            m_clipmapCenterSafeRegion[depth] = new AABB2Int(-safeRegionHalfSize, -safeRegionHalfSize,
-                safeRegionHalfSize, safeRegionHalfSize);
-            
-            // Set clipmap centers outside the mip area so that their textures will be automatically loaded in the first update
-            m_clipCenters[depth] = m_clipmapCenterSafeRegion[depth].min - new Vector2Int(m_clipSize, m_clipSize);
-            m_latestValidClipCenters[depth] = m_clipCenters[depth];
-            m_clipCentersFloat[depth].x = m_clipCenters[depth].x;
-            m_clipCentersFloat[depth].y = m_clipCenters[depth].y;
-
-            m_clipScaleToMip[depth] = clipScaleToMip;
-            m_mipScaleToWorld[depth] = mipScaleToWorld;
-        }
-
-        // Use the last level as the clipmap pyramid, it is a fixed texture that covers the whole surface
-        int lastLevelIndex = m_clipmapLevelCount - 1;
-
-        Graphics.CopyTexture(m_baseMipTexture[lastLevelIndex], ClipmapPyramid);
-
-        m_clipScaleToMip[lastLevelIndex] = clipScaleToMip;
-        m_mipScaleToWorld[lastLevelIndex] = mipScaleToWorld;
-    }
+        UpdateCache(camCoord2D, camHeight);
+        UpdateClipmap(camCoord2D, camHeight);
         
+        Array.Copy(m_clipCenters, m_clipCentersLastFrame, m_clipmapStackLevelCount);
+    }
+    
+    
+   
+    
     
     private void PassStaticUniforms()
     {
@@ -286,11 +359,11 @@ public class Clipmap : MonoBehaviour
     
     
     // get the newly covered region after the clip-region moves, in the form of a list of AABB2Ints
-    private static List<AABB2Int> GetUpdateRegions(in Vector2Int oldCenter, in Vector2Int newCenter, int tileSize)
+    private static List<AABB2Int> GetUpdateRegions(in Vector2Int oldCenter, in Vector2Int newCenter, int regionSize)
     {
         Vector2Int diff = newCenter - oldCenter;
-        int updateWidth = Math.Min(tileSize, Math.Abs(diff.x));
-        int tileHalfSize = tileSize / 2;
+        int updateWidth = Math.Min(regionSize, Math.Abs(diff.x));
+        int regionHalfSize = regionSize / 2;
         
         List<AABB2Int> updateRegions = new List<AABB2Int>();
         // Find the updated regions in current space
@@ -302,49 +375,83 @@ public class Clipmap : MonoBehaviour
             AABB2Int xUpdateZone = new AABB2Int();
             if (diff.x < 0)
             {
-                xUpdateZone.min.x = newCenter.x - tileHalfSize;
+                xUpdateZone.min.x = newCenter.x - regionHalfSize;
                 xUpdateZone.max.x = xUpdateZone.min.x + updateWidth;
             }
             else
             {
-                xUpdateZone.max.x = newCenter.x + tileHalfSize;
+                xUpdateZone.max.x = newCenter.x + regionHalfSize;
                 xUpdateZone.min.x = xUpdateZone.max.x - updateWidth;
             }
 
-            xUpdateZone.min.y = newCenter.y - tileHalfSize;
-            xUpdateZone.max.y = xUpdateZone.min.y + tileSize;
+            xUpdateZone.min.y = newCenter.y - regionHalfSize;
+            xUpdateZone.max.y = xUpdateZone.min.y + regionSize;
             updateRegions.Add(xUpdateZone);
         }
 
         // We will skip vertical update if there is no displacement along the y-axis or
         // if the x-axis displacement is too large that already covers the entire tile
-        int updateHeight = Math.Min(tileSize, Math.Abs(diff.y));
-        if (updateHeight > 0 && updateWidth < tileSize)
+        int updateHeight = Math.Min(regionSize, Math.Abs(diff.y));
+        if (updateHeight > 0 && updateWidth < regionSize)
         {
             AABB2Int yUpdateZone = new AABB2Int();
             if (diff.y < 0)
             {
-                yUpdateZone.min.y = newCenter.y - tileHalfSize;
+                yUpdateZone.min.y = newCenter.y - regionHalfSize;
                 yUpdateZone.max.y = yUpdateZone.min.y +updateHeight;
             }
             else
             {
-                yUpdateZone.max.y = newCenter.y + tileHalfSize;
+                yUpdateZone.max.y = newCenter.y + regionHalfSize;
                 yUpdateZone.min.y = yUpdateZone.max.y - updateHeight;
             }
 
             if (diff.x < 0)
             {
-                yUpdateZone.max.x = newCenter.x + tileHalfSize;
-                yUpdateZone.min.x = yUpdateZone.max.x - tileSize + updateWidth;
+                yUpdateZone.max.x = newCenter.x + regionHalfSize;
+                yUpdateZone.min.x = yUpdateZone.max.x - regionSize + updateWidth;
             }
             else
             {
-                yUpdateZone.min.x = newCenter.x - tileHalfSize;
-                yUpdateZone.max.x = yUpdateZone.min.x + tileSize - updateWidth;
+                yUpdateZone.min.x = newCenter.x - regionHalfSize;
+                yUpdateZone.max.x = yUpdateZone.min.x + regionSize - updateWidth;
             }
             updateRegions.Add(yUpdateZone);
         }
         return updateRegions;
     }
+
+    private void OnDrawGizmos()
+    {
+        if (!DRAW_DEBUG_INFO)
+        {
+            return;
+        }
+        //
+        Color[] cols = new Color[3];
+        cols[0] = new Color(1, 0, 0, 0.5f);
+        cols[1] = new Color(0, 1, 0, 0.5f);
+        cols[2] = new Color(0, 0, 1, 0.5f);
+
+        for (int d = m_clipmapStackLevelCount-1; d >= 0 ; --d)
+        {
+
+            Vector3 center = new Vector3(m_clipCenters[d].x, 0, m_clipCenters[d].y) * m_mipScaleToWorld[d];
+            Gizmos.color= cols[d];
+            Gizmos.DrawWireCube(center, new Vector3(m_clipSize, 1, m_clipSize) * m_mipScaleToWorld[d]);
+        }
+        
+        int depth = 0;
+        int cacheTileHalfSize = m_cacheTileSize / 2;
+        float mipScaleToWorld = m_mipScaleToWorld[depth];
+        foreach (var key in m_tileCacheManager.GetCachedTileCoords(depth))
+        {
+            Vector3 center = new Vector3(key.x + cacheTileHalfSize, 0, key.y + cacheTileHalfSize) - new Vector3(m_mipHalfSize[depth], 0, m_mipHalfSize[depth]);
+            center *= mipScaleToWorld;
+            Gizmos.color = new Color(1,0, 1, 0.8f);
+            Gizmos.DrawCube(center, new Vector3(m_cacheTileSize * mipScaleToWorld, 5, m_cacheTileSize * mipScaleToWorld));
+        }
+    }
+    
 }
+

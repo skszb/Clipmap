@@ -29,6 +29,7 @@ public class ClipmapDemo : MonoBehaviour
     private void Update()
     {
         var worldCoordinate = PlayerPawn.position - WorldOrigin.position;
-        m_clipMap.UpdateClipmap(worldCoordinate);
+        // m_clipMap.UpdateClipmap(worldCoordinate);
+        m_clipMap.UpdateCamera(worldCoordinate);   
     }
 }

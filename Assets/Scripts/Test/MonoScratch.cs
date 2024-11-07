@@ -27,12 +27,6 @@ public class MonoScratch : MonoBehaviour
     {
         if (!load) { return;}
 
-        load = false;
-        var result = tileCacheManager.GetTiles(new AABB2Int(bottomLeft, topRight), depth);
-        LoadedTextures = new List<Texture2D>(result.Count);
-        foreach (var tile in result)
-        {
-            LoadedTextures.Add(tile.textureTile);
-        }
+
     }
 }
