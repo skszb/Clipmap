@@ -43,23 +43,24 @@ public class TileCacheManager
             Texture = texture;
             Bound = bound;
         }
+
+        public TextureTileInfo()
+        {
+            Texture = null;
+            Bound = new AABB2Int();
+        }
     }
 
     public class TextureLoadResult
     {
         public List<TextureTileInfo> Successful;
         public List<TextureTileInfo> Failed;
+        
     }
     
     // Return the texture tiles that the given region lies within. If a tile isn't cached yet, it will be null
-    public bool GetTiles(AABB2Int updateRegion, int depth, out TextureLoadResult result)
+    public bool GetTiles(AABB2Int updateRegion, int depth, ref TextureLoadResult result)
     {
-        result = new TextureLoadResult
-        {
-            Successful = new List<TextureTileInfo>(),
-            Failed = new List<TextureTileInfo>()
-        };
-        
         TextureTileCache textureTileCache = m_tileCaches[depth];
         int halfTextureSize = m_baseTextureSizes[depth] / 2;
         // convert to texel space``
@@ -157,7 +158,7 @@ public class TileCacheManager
         {
             if (m_cacheLookupTable.TryGetValue(tileCoordinates, out int index))
             {
-                // if (m_lruInfoCache.SetActive(index))
+                if (m_lruInfoCache.SetActive(index))
                 {
                     return m_cachedTextures[index];
                 }

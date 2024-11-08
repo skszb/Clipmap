@@ -104,7 +104,7 @@ Shader "Unlit/ClipmapSurface"
                 
                 
                 // combine world space and screen space
-                // fineLevelIndex = min(max(fineLevelIndex, mipLevelScreenSpaceFine), _ClipmapStackLevelCount);
+                fineLevelIndex = min(max(fineLevelIndex, mipLevelScreenSpaceFine), _ClipmapStackLevelCount);
                 coarseLevelIndex = fineLevelIndex + 1;
 
                 // Blending algorithm from: https://hhoppe.com/proj/geomclipmap/
