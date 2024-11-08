@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(fileName = "ClipmapConfiguration", menuName = "ScriptableObjects/Clipmap/ClipmapConfiguration")]
 public class ClipmapConfiguration : ScriptableObject
@@ -11,11 +12,11 @@ public class ClipmapConfiguration : ScriptableObject
 
     public TextureFormat TextureFormat;
 
-    public Texture2D[] BaseTexture;
+    public Texture2D ClipmapPyramidTexture;
 
-    [Space(10)] [Header("Tile Cache Descriptor")] [Space(5)]
+     [Space(10)] [Header("Tile Cache Descriptor")] [Space(5)]
     
-    public string[] folderName;
+    public string[] TextureTilePath;
     public int[] baseTextureSize;
     public int tileSize;
     

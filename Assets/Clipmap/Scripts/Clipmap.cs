@@ -24,9 +24,6 @@ public class Clipmap : MonoBehaviour
     public bool DRAW_DEBUG_INFO;
     
     [SerializeField] private ClipmapConfiguration m_clipmapConfiguration;
-
-    // Faked as data in disk, should be changed to streaming address later 
-    private Texture2D[] m_baseMipTextures;
     
     private AABB2Int[] m_baseMipTextureBounds;
 
@@ -49,7 +46,6 @@ public class Clipmap : MonoBehaviour
     private int m_cacheSize;
     private int m_cacheHalfSize;
     
-    
     public Texture2DArray ClipmapStack { get; private set; }
 
     public Texture2D ClipmapPyramid { get; private set; }
@@ -70,7 +66,6 @@ public class Clipmap : MonoBehaviour
     private int m_clipHalfSize;
 
     // The number of levels in the clipmap region
-    private int m_clipmapLevelCount;
     private int m_clipmapStackLevelCount; // The number of levels in the clipmap stack
 
     private float[] m_clipScaleToMip;
@@ -106,22 +101,20 @@ public class Clipmap : MonoBehaviour
         m_updateGridSize = m_clipmapConfiguration.ClipmapUpdateGridSize;
         m_invalidBorder = m_clipmapConfiguration.InvalidBorder;
         m_mipTextureFormat = m_clipmapConfiguration.TextureFormat;
-        m_clipmapLevelCount = m_clipmapConfiguration.BaseTexture.Length;
-        m_clipmapStackLevelCount = m_clipmapLevelCount - 1;
+        m_clipmapStackLevelCount = m_clipmapConfiguration.baseTextureSize.Length;
         m_clipHalfSize = m_clipSize >> 1;
-        m_mipSize = new int[m_clipmapLevelCount];
-        m_mipSizeFloat = new float[m_clipmapLevelCount];
-        m_mipHalfSize = new int[m_clipmapLevelCount];
-        m_mipHalfSizeFloat = new float[m_clipmapLevelCount];
-        m_baseMipTextures = m_clipmapConfiguration.BaseTexture;
-        m_clipScaleToMip = new float[m_clipmapLevelCount];
-        m_mipScaleToWorld = new float[m_clipmapLevelCount];
-        m_baseMipTextureBounds = new AABB2Int[m_clipmapLevelCount];
-        for (int i = 0; i < m_clipmapLevelCount; i++)
+        m_mipSize = new int[m_clipmapStackLevelCount];
+        m_mipSizeFloat = new float[m_clipmapStackLevelCount];
+        m_mipHalfSize = new int[m_clipmapStackLevelCount];
+        m_mipHalfSizeFloat = new float[m_clipmapStackLevelCount];
+        m_clipScaleToMip = new float[m_clipmapStackLevelCount];
+        m_mipScaleToWorld = new float[m_clipmapStackLevelCount];
+        m_baseMipTextureBounds = new AABB2Int[m_clipmapStackLevelCount];
+        for (int i = 0; i < m_clipmapStackLevelCount; i++)
         {
-            m_mipSize[i] = m_baseMipTextures[i].width;
+            m_mipSize[i] = m_clipmapConfiguration.baseTextureSize[i];
             m_mipSizeFloat[i] = m_mipSize[i];
-            m_mipHalfSize[i] = m_baseMipTextures[i].width >> 1;
+            m_mipHalfSize[i] = m_mipSize[i] >> 1;
             m_mipHalfSizeFloat[i] = m_mipHalfSize[i];
             m_baseMipTextureBounds[i] = new AABB2Int(0,0,m_mipSize[i], m_mipSize[i]) - m_mipHalfSize[i];
         }
@@ -161,14 +154,8 @@ public class Clipmap : MonoBehaviour
             m_clipScaleToMip[depth] = clipScaleToMip;
             m_mipScaleToWorld[depth] = mipScaleToWorld;
         }
-
-        // Use the last level as the clipmap pyramid, it is a fixed texture that covers the whole surface
-        int lastLevelIndex = m_clipmapLevelCount - 1;
-
-        Graphics.CopyTexture(m_baseMipTextures[lastLevelIndex], ClipmapPyramid);
-
-        m_clipScaleToMip[lastLevelIndex] = clipScaleToMip;
-        m_mipScaleToWorld[lastLevelIndex] = mipScaleToWorld;
+        
+        Graphics.CopyTexture(m_clipmapConfiguration.ClipmapPyramidTexture, ClipmapPyramid);
         
         m_maxTextureLOD = m_clipmapStackLevelCount; // set to clipmap pyramid at start
     }
@@ -199,7 +186,7 @@ public class Clipmap : MonoBehaviour
         {
             int baseTextureSize = m_clipmapConfiguration.baseTextureSize[depth];
             m_tileCacheManager.SetCacheAtDepth(depth, baseTextureSize, m_cacheTileSize, 
-                m_clipmapConfiguration.folderName[depth], cacheCapacity);
+                m_clipmapConfiguration.TextureTilePath[depth], cacheCapacity);
         }
     }
     
@@ -250,7 +237,6 @@ public class Clipmap : MonoBehaviour
                 };
                 
                 allCached = allCached && m_tileCacheManager.GetTiles(region, depth, ref loadResult);
-
                 
                 foreach (TileCacheManager.TextureTileInfo tileInfo in loadResult.Successful)
                 {
@@ -261,6 +247,7 @@ public class Clipmap : MonoBehaviour
                     m_tileCacheManager.LoadRequiredTiles(tileInfo.Bound, depth);
                 }
             }
+            
             if (!allCached)
             {
                 m_maxTextureLOD = depth + 1;

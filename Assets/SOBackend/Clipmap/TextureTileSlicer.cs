@@ -59,7 +59,7 @@ public class TextureTileSlicer : ScriptableObject
 
                     var tex = new Texture2D(tileSize, tileSize, TextureFormat.RGBA32, false);
                     tex.SetPixelData(intermediateBuffer, 0);
-                    var assetPath = Path.Combine(currentFolderPath, string.Format("{0}_{1}.asset", u, v));
+                    var assetPath = Path.Combine(currentFolderPath, $"{u}_{v}.asset");
                     AssetDatabase.CreateAsset(tex, assetPath);
                 }
             }
